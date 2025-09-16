@@ -1,5 +1,5 @@
 """Portfolio monitoring service stubs."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.schemas.portfolio import PortfolioSignal, TradeActivity
 
@@ -7,7 +7,7 @@ from app.schemas.portfolio import PortfolioSignal, TradeActivity
 async def aggregate_signals(limit: int = 5) -> list[PortfolioSignal]:
     """Return deterministic signals for UI scaffolding."""
 
-    base_time = datetime.utcnow()
+    base_time = datetime.now(timezone.utc)
     trades = [
         TradeActivity(
             member="Sen. Jane Doe",

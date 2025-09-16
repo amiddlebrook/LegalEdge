@@ -1,5 +1,5 @@
 """Legislative data ingestion and feature stubs."""
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from app.schemas.legislation import BillImpactProjection, BillImpactRequest, LegislativeBrief
 
@@ -7,7 +7,7 @@ from app.schemas.legislation import BillImpactProjection, BillImpactRequest, Leg
 async def get_upcoming_legislation(limit: int = 10) -> list[LegislativeBrief]:
     """Return mock legislative records until data pipelines are wired."""
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     records: list[LegislativeBrief] = []
     for idx in range(limit):
         records.append(

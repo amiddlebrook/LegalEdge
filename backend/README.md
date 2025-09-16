@@ -29,4 +29,8 @@ app/
   workflows/    # Orchestration entry points for background tasks
 ```
 
-The service is prepared for PostgreSQL via SQLAlchemy async sessions. Update the connection string via `.env` or environment variables prefixed with `LEGALEDGE_`.
+The service is prepared for PostgreSQL via SQLAlchemy async sessions. Update the connection string via `.env` or environment variables prefixed with `LEGALEDGE_`.## Background ingestion
+
+A recurring task manager triggers `run_daily_ingestion` on startup based on `LEGALEDGE_INGESTION_SCHEDULE_MINUTES`. The stub logs activity for now and is ready to orchestrate Prefect, Celery, or AWS-native jobs once real data pipelines are wired.## Logging
+
+Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.
