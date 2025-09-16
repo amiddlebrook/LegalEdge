@@ -42,4 +42,5 @@ npm run dev
 - `GET /api/v1/opportunities` - market opportunity engine recommendations.
 - `GET /api/v1/alerts` - policy and trading alerts feed.
 - `GET /api/v1/health/status` - simple liveness probe for infra checks.
-- `GET /api/v1/legislation/upcoming` - mock legislative feed for UI prototyping.\n- Background ingestion is orchestrated by a recurring task manager during application lifespan events.\n
+- `GET /api/v1/legislation/upcoming` - mock legislative feed for UI prototyping.
+- Background ingestion is orchestrated by a recurring task manager during application lifespan events.
