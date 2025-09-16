@@ -14,8 +14,9 @@ npm run lint         # run ESLint checks
 ## Implementation notes
 
 - TailwindCSS is configured in `tailwind.config.js` with a gradient theme aligning to the product vision.
-- Components live under `src/components` and consume data structures pulled from the product brief plus backend APIs.
-- The landing view renders alerts, market opportunities, live policy radar, forecast spotlights, portfolio intelligence, and product overview sections fed by the API.
+- Components live under `src/components`; shared fallbacks and API helpers sit in `src/lib` for reuse across views.
+- React Router powers two primary routes: the Overview (marketing narrative) and the Dashboard (interactive alerts, opportunities, forecasts, and portfolio intelligence). Navigation persists via `MainLayout`.
+- Calls to the FastAPI backend are abstracted through `api.js`, which gracefully falls back to curated data when endpoints are unreachable.
 
 ### Environment variables
 
