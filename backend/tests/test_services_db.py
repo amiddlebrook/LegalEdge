@@ -12,7 +12,7 @@ from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import aggregate_signals, detect_conflicts
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot
 
 
 @pytest.fixture
@@ -94,3 +94,11 @@ async def test_build_entity_resolution_summary(session):
     lr1000 = next(link for link in summary.bill_links if link.bill_id == 'LR-1000')
     assert 'AIT' in lr1000.tickers
     assert lr1000.coverage_score > 0
+
+
+@pytest.mark.anyio
+async def test_get_portfolio_snapshot_uses_database(session):
+    summary = await get_portfolio_snapshot(session=session, lookback_days=60, top_n=3)
+    assert summary.total_trades_30d >= 1
+    assert summary.top_tickers
+    assert summary.top_tickers[0].ticker

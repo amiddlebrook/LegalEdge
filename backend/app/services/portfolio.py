@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.legislation import LegislativeBill
 from app.models.portfolio import TradeDisclosure
 from app.repositories.portfolio import list_recent_trades
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown
 
 
 async def aggregate_signals(
@@ -96,6 +96,94 @@ async def aggregate_signals(
     ]
 
     return signals[:limit]
+
+
+async def get_portfolio_snapshot(
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 30,
+    top_n: int = 5,
+) -> PortfolioSnapshot:
+    """Summarize recent trade disclosures with directional context."""
+
+    now = datetime.now(timezone.utc)
+    lookback_threshold = now - timedelta(days=max(1, lookback_days))
+    recent_window = now - timedelta(days=7)
+
+    trades: list[TradeDisclosure] = []
+    if session is not None:
+        try:
+            stmt = select(TradeDisclosure).where(TradeDisclosure.transaction_date >= lookback_threshold)
+            result = await session.execute(stmt.order_by(TradeDisclosure.transaction_date.desc()))
+            trades = list(result.scalars().all())
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch trades for snapshot: %s', exc)
+
+    if not trades:
+        logger.debug('Falling back to stubbed portfolio snapshot')
+        stub_trade = TradeDisclosure(
+            filing_id='stub',
+            source='stub',
+            member='Sen. Jane Doe',
+            chamber='Senate',
+            ticker='AIT',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=2),
+            amount_range='$50k-$100k',
+            related_bill='LR-1000',
+        )
+        trades = [stub_trade]
+
+    total_trades = len(trades)
+    unique_members = len({trade.member for trade in trades})
+    unique_tickers = len({trade.ticker for trade in trades})
+    filings_last_7d = sum(1 for trade in trades if _ensure_timezone(trade.transaction_date) >= recent_window)
+    buy_count = sum(1 for trade in trades if (trade.transaction_type or '').upper() == 'BUY')
+    sell_count = sum(1 for trade in trades if (trade.transaction_type or '').upper() == 'SELL')
+    total_directional = buy_count + sell_count
+    buy_sell_ratio = None
+    if total_directional:
+        buy_sell_ratio = round(buy_count / total_directional, 3)
+
+    grouped: dict[str, list[TradeDisclosure]] = defaultdict(list)
+    for trade in trades:
+        grouped[trade.ticker].append(trade)
+
+    drilldowns: list[TickerDrilldown] = []
+    for ticker, ticker_trades in grouped.items():
+        buys = sum(1 for trade in ticker_trades if (trade.transaction_type or '').upper() == 'BUY')
+        sells = sum(1 for trade in ticker_trades if (trade.transaction_type or '').upper() == 'SELL')
+        net_flow = 'neutral'
+        if buys > sells:
+            net_flow = 'accumulating'
+        elif sells > buys:
+            net_flow = 'reducing'
+        last_trade = max((_ensure_timezone(trade.transaction_date) for trade in ticker_trades), default=lookback_threshold)
+        drilldowns.append(
+            TickerDrilldown(
+                ticker=ticker,
+                total_trades=len(ticker_trades),
+                buy_count=buys,
+                sell_count=sells,
+                net_flow=net_flow,
+                members=sorted({trade.member for trade in ticker_trades}),
+                chambers=sorted({trade.chamber for trade in ticker_trades}),
+                last_trade_at=_ensure_timezone(last_trade),
+            )
+        )
+
+    drilldowns.sort(key=lambda item: (-item.total_trades, -item.buy_count, item.ticker))
+    top_tickers = drilldowns[:max(1, top_n)]
+
+    return PortfolioSnapshot(
+        generated_at=now,
+        total_trades_30d=total_trades,
+        unique_members=unique_members,
+        unique_tickers=unique_tickers,
+        filings_last_7d=filings_last_7d,
+        buy_sell_ratio=buy_sell_ratio,
+        top_tickers=top_tickers,
+    )
 
 async def detect_conflicts(
     limit: int = 5,

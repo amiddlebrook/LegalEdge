@@ -44,4 +44,27 @@ class ConflictInsight(BaseModel):
     confidence: float
     rationale: str
 
+class TickerDrilldown(BaseModel):
+    """Aggregated activity metrics for a ticker."""
+
+    ticker: str
+    total_trades: int
+    buy_count: int
+    sell_count: int
+    net_flow: str
+    members: list[str]
+    chambers: list[str]
+    last_trade_at: datetime
+
+
+class PortfolioSnapshot(BaseModel):
+    """Overview of recent congressional trading activity."""
+
+    generated_at: datetime
+    total_trades_30d: int
+    unique_members: int
+    unique_tickers: int
+    filings_last_7d: int
+    buy_sell_ratio: float | None
+    top_tickers: list[TickerDrilldown]
 
