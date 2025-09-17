@@ -6,6 +6,7 @@ import { ForecastSignalCard } from '../components/ForecastSignalCard.jsx'
 import { LegislationCard } from '../components/LegislationCard.jsx'
 import { OpportunityCard } from '../components/OpportunityCard.jsx'
 import { PortfolioSignalCard } from '../components/PortfolioSignalCard.jsx'
+import { useApiCache } from '../context/ApiCacheContext.jsx'
 import { api } from '../lib/api.js'
 import { fallbackDashboard } from '../lib/fallbacks.js'
 
@@ -13,6 +14,7 @@ const sectors = ['Technology', 'Financial Services', 'Healthcare', 'Energy', 'In
 const horizonOptions = [30, 45, 60, 90, 120]
 
 export function DashboardPage() {
+  const { fetchResource, peek } = useApiCache()
   const [dashboard, setDashboard] = useState(fallbackDashboard)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
@@ -26,85 +28,76 @@ export function DashboardPage() {
 
   useEffect(() => {
     let aborted = false
+
+    const snapshotKey = 'dashboard-snapshot'
+    const alertsKey = `alerts-${filters.legislationLimit}`
+    const opportunitiesKey = `opportunities-${filters.opportunityLimit}`
+    const legislationKey = `legislation-${filters.legislationLimit}`
+    const forecastKey = `forecast-${filters.sector}-${filters.horizon}`
+
+    const cached = composeDashboard({
+      snapshot: peek(snapshotKey),
+      alertsPayload: peek(alertsKey),
+      opportunitiesPayload: peek(opportunitiesKey),
+      legislationPayload: peek(legislationKey),
+      forecastPayload: peek(forecastKey),
+      fallback: dashboard,
+      filters,
+    })
+
+    if (cached !== dashboard) {
+      setDashboard(cached)
+      setStatus('success')
+    }
+
     ;(async () => {
       try {
-        setStatus('loading')
-        const [snapshot, alertsPayload, opportunitiesPayload, fallbackLegislation] = await Promise.all([
-          api.fetchDashboardSnapshot().catch(() => null),
-          api.fetchAlerts({ limit: filters.legislationLimit }).catch(() => null),
-          api.fetchOpportunities({ limit: filters.opportunityLimit }).catch(() => null),
-          api.fetchLegislation({ limit: filters.legislationLimit }).catch(() => null),
+        setStatus(cached === dashboard ? 'loading' : 'refresh')
+        const [snapshot, alertsPayload, opportunitiesPayload, legislationPayload, forecastPayload] = await Promise.all([
+          fetchResource(snapshotKey, api.fetchDashboardSnapshot).catch(() => null),
+          fetchResource(alertsKey, () => api.fetchAlerts({ limit: filters.legislationLimit })).catch(() => null),
+          fetchResource(opportunitiesKey, () => api.fetchOpportunities({ limit: filters.opportunityLimit })).catch(() => null),
+          fetchResource(legislationKey, () => api.fetchLegislation({ limit: filters.legislationLimit })).catch(() => null),
+          fetchResource(forecastKey, () =>
+            api.fetchForecast({ sector: filters.sector, horizon_days: filters.horizon }),
+          ).catch(() => null),
         ])
 
-        const results = {
-          upcomingLegislation: dashboard.upcomingLegislation,
-          sectorForecast: dashboard.sectorForecast,
-          portfolioSignals: dashboard.portfolioSignals,
-          alerts: dashboard.alerts,
-          opportunities: dashboard.opportunities,
-        }
-
-        if (snapshot) {
-          results.upcomingLegislation = snapshot.upcoming_legislation.map(mapBill)
-          results.portfolioSignals = (snapshot.portfolio_signals ?? []).map(mapPortfolioSignal)
-          results.sectorForecast = {
-            sector: snapshot.sector_forecast?.sector,
-            horizonDays: snapshot.sector_forecast?.horizon_days,
-            generatedOn: snapshot.sector_forecast?.generated_on,
-            signals: (snapshot.sector_forecast?.signals ?? []).map(mapForecastSignal),
-          }
-        } else if (fallbackLegislation) {
-          results.upcomingLegislation = fallbackLegislation.map(mapBill)
-        }
-
-        if (alertsPayload?.alerts) {
-          results.alerts = alertsPayload.alerts.map(mapAlert)
-        }
-
-        if (opportunitiesPayload?.opportunities) {
-          results.opportunities = opportunitiesPayload.opportunities.map(mapOpportunity)
-        }
-
-        try {
-          const forecast = await api.fetchForecast({
-            sector: filters.sector,
-            horizon_days: filters.horizon,
-          })
-          results.sectorForecast = {
-            sector: forecast.sector,
-            horizonDays: forecast.horizon_days,
-            generatedOn: forecast.generated_on,
-            signals: (forecast.signals ?? []).map(mapForecastSignal),
-          }
-        } catch (forecastError) {
-          console.debug('Forecast fetch failed, keeping previous snapshot', forecastError)
-        }
-
         if (aborted) return
-        setDashboard(results)
+        setDashboard(
+          composeDashboard({
+            snapshot,
+            alertsPayload,
+            opportunitiesPayload,
+            legislationPayload,
+            forecastPayload,
+            fallback: dashboard,
+            filters,
+          }),
+        )
         setStatus('success')
         setError(null)
       } catch (err) {
         if (aborted) return
-        setStatus('error')
+        setStatus(cached === dashboard ? 'error' : 'success')
         setError(err.message)
+        if (cached === dashboard) {
+          setDashboard(fallbackDashboard)
+        }
       }
     })()
 
     return () => {
       aborted = true
     }
-  }, [filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.sector])
+  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.sector])
 
   const legislationRows = useMemo(
     () => dashboard.upcomingLegislation.slice(0, filters.legislationLimit),
     [dashboard.upcomingLegislation, filters.legislationLimit],
   )
 
-  const openDrawer = (type, data) => {
-    setDrawerDetail({ type, data })
-  }
-
+  const openDrawer = (type, data) => setDrawerDetail({ type, data })
   const closeDrawer = () => setDrawerDetail(null)
 
   return (
@@ -150,7 +143,7 @@ export function DashboardPage() {
             </label>
           </div>
         </div>
-        {status === 'loading' ? (
+        {status === 'loading' || status === 'refresh' ? (
           <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary">
             Syncing dashboard data...
           </div>
@@ -165,24 +158,17 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center justify-between gap-6">
           <h2 className="text-2xl font-semibold text-white">Active alerts</h2>
-          <div className="flex items-center gap-3 text-xs">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 font-semibold text-slate-200 hover:border-primary"
-              onClick={() => setFilters((prev) => ({ ...prev, legislationLimit: prev.legislationLimit + 2 }))}
-            >
-              Load more
-            </button>
-          </div>
+          <button
+            type="button"
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-primary"
+            onClick={() => setFilters((prev) => ({ ...prev, legislationLimit: prev.legislationLimit + 2 }))}
+          >
+            Load more
+          </button>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {dashboard.alerts.map((alert) => (
-            <button
-              key={alert.id}
-              type="button"
-              onClick={() => openDrawer('alert', alert)}
-              className="text-left"
-            >
+            <button key={alert.id} type="button" onClick={() => openDrawer('alert', alert)} className="text-left">
               <AlertBanner {...alert} />
             </button>
           ))}
@@ -216,9 +202,7 @@ export function DashboardPage() {
                   <td className="px-4 py-3 text-slate-300">{bill.stage}</td>
                   <td className="px-4 py-3 text-slate-300">{bill.jurisdiction}</td>
                   <td className="px-4 py-3 text-slate-300">{formatDate(bill.nextActionDate)}</td>
-                  <td className="px-4 py-3 text-right text-slate-300">
-                    {formatPercent(bill.sentimentScore)}
-                  </td>
+                  <td className="px-4 py-3 text-right text-slate-300">{formatPercent(bill.sentimentScore)}</td>
                 </tr>
               ))}
             </tbody>
@@ -304,10 +288,7 @@ function AlertDetail({ alert }) {
     <div className="space-y-3 text-sm text-slate-200">
       <p className="text-xs uppercase tracking-wide text-slate-400">{alert.category}</p>
       <p className="text-sm text-slate-300">{alert.description}</p>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Severity</p>
-        <p className="mt-1 text-sm text-slate-200 capitalize">{alert.severity}</p>
-      </div>
+      <DetailList label="Severity" value={alert.severity} />
       {alert.relatedEntities?.length ? (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Related entities</p>
@@ -378,8 +359,63 @@ function drawerTitle(detail) {
   if (!detail) return ''
   if (detail.type === 'alert') return 'Policy alert detail'
   if (detail.type === 'bill') return detail.data.title
-  if (detail.type === 'opportunity') return `Opportunity — ${detail.data.ticker}`
+  if (detail.type === 'opportunity') return `Opportunity – ${detail.data.ticker}`
   return ''
+}
+
+function composeDashboard({
+  snapshot,
+  alertsPayload,
+  opportunitiesPayload,
+  legislationPayload,
+  forecastPayload,
+  fallback,
+  filters,
+}) {
+  const base = fallback ?? fallbackDashboard
+  const result = {
+    upcomingLegislation: base.upcomingLegislation ?? fallbackDashboard.upcomingLegislation,
+    sectorForecast: base.sectorForecast ?? fallbackDashboard.sectorForecast,
+    portfolioSignals: base.portfolioSignals ?? fallbackDashboard.portfolioSignals,
+    alerts: base.alerts ?? fallbackDashboard.alerts,
+    opportunities: base.opportunities ?? fallbackDashboard.opportunities,
+  }
+
+  if (snapshot?.upcoming_legislation?.length) {
+    result.upcomingLegislation = snapshot.upcoming_legislation.map(mapBill)
+  } else if (Array.isArray(legislationPayload) && legislationPayload.length) {
+    result.upcomingLegislation = legislationPayload.map(mapBill)
+  }
+
+  if (snapshot?.portfolio_signals?.length) {
+    result.portfolioSignals = snapshot.portfolio_signals.map(mapPortfolioSignal)
+  }
+
+  if (alertsPayload?.alerts?.length) {
+    result.alerts = alertsPayload.alerts.map(mapAlert)
+  }
+
+  if (opportunitiesPayload?.opportunities?.length) {
+    result.opportunities = opportunitiesPayload.opportunities.map(mapOpportunity)
+  }
+
+  const forecastSource = forecastPayload ?? snapshot?.sector_forecast
+  if (forecastSource) {
+    result.sectorForecast = {
+      sector: forecastSource.sector ?? filters.sector,
+      horizonDays: forecastSource.horizon_days ?? filters.horizon,
+      generatedOn: forecastSource.generated_on ?? forecastSource.generatedOn ?? new Date().toISOString(),
+      signals: (forecastSource.signals ?? []).map(mapForecastSignal),
+    }
+  } else {
+    result.sectorForecast = {
+      ...result.sectorForecast,
+      sector: filters.sector,
+      horizonDays: filters.horizon,
+    }
+  }
+
+  return result
 }
 
 function mapBill(bill) {
@@ -427,7 +463,7 @@ function mapPortfolioSignal(signal) {
 
 function mapAlert(alert) {
   return {
-    id: alert.id,
+    id: alert.id ?? alert.alert_key ?? crypto.randomUUID(),
     category: alert.category,
     title: alert.title,
     description: alert.description,
@@ -458,6 +494,7 @@ function formatPercent(value) {
   const scaled = Math.abs(numeric) <= 1 ? numeric * 100 : numeric
   return `${scaled.toFixed(1)}%`
 }
+
 function formatDate(value) {
   if (!value) return 'TBD'
   const dateValue = new Date(value)

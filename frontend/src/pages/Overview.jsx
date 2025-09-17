@@ -3,45 +3,50 @@ import { useEffect, useState } from 'react'
 import { DataSourceBadge } from '../components/DataSourceBadge.jsx'
 import { FeatureCard } from '../components/FeatureCard.jsx'
 import { MetricCard } from '../components/MetricCard.jsx'
+import { useApiCache } from '../context/ApiCacheContext.jsx'
 import { api } from '../lib/api.js'
 import { fallbackOverview } from '../lib/fallbacks.js'
 
 export function OverviewPage() {
-  const [overview, setOverview] = useState(fallbackOverview)
-  const [status, setStatus] = useState('idle')
+  const { fetchResource, peek } = useApiCache()
+  const [overview, setOverview] = useState(() => mapOverview(peek('overview') ?? fallbackOverview))
+  const [status, setStatus] = useState(peek('overview') ? 'success' : 'idle')
   const [error, setError] = useState(null)
 
   useEffect(() => {
     let aborted = false
+    const cached = peek('overview')
+    if (cached) {
+      setOverview(mapOverview(cached))
+      setStatus('success')
+    }
+
     ;(async () => {
       try {
-        setStatus('loading')
-        const payload = await api.fetchOverview()
+        setStatus(cached ? 'refresh' : 'loading')
+        const payload = await fetchResource('overview', api.fetchOverview)
         if (aborted) return
-        setOverview({
-          hero: payload.hero,
-          dataSources: payload.data_sources,
-          features: payload.features,
-          metrics: payload.metrics,
-          workflow: payload.workflow,
-        })
+        setOverview(mapOverview(payload))
         setStatus('success')
         setError(null)
       } catch (err) {
         if (aborted) return
-        setStatus('error')
+        setStatus(cached ? 'success' : 'error')
         setError(err.message)
+        if (!cached) {
+          setOverview(mapOverview(fallbackOverview))
+        }
       }
     })()
 
     return () => {
       aborted = true
     }
-  }, [])
+  }, [fetchResource, peek])
 
   return (
     <div className="mx-auto max-w-6xl space-y-16 px-6 pb-20 pt-16">
-      {status === 'loading' ? (
+      {status === 'loading' || status === 'refresh' ? (
         <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary">
           Syncing latest overview insights...
         </div>
@@ -114,4 +119,15 @@ export function OverviewPage() {
       </section>
     </div>
   )
+}
+
+function mapOverview(payload) {
+  if (!payload) return fallbackOverview
+  return {
+    hero: payload.hero,
+    dataSources: payload.data_sources ?? payload.dataSources ?? fallbackOverview.dataSources,
+    features: payload.features ?? fallbackOverview.features,
+    metrics: payload.metrics ?? fallbackOverview.metrics,
+    workflow: payload.workflow ?? fallbackOverview.workflow,
+  }
 }
