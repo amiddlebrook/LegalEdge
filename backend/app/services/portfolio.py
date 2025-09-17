@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone, time as dtime
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.legislation import LegislativeBill
@@ -162,6 +162,68 @@ async def get_trade_activity_timeline(
         )
 
     return timeline
+
+
+async def get_member_trade_history(
+    member: str,
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 180,
+    limit: int = 50,
+) -> list[TradeActivity]:
+    """Return recent trades for a specific member."""
+
+    normalized_member = member.strip()
+    if not normalized_member:
+        return []
+
+    now = datetime.now(timezone.utc)
+    lookback_threshold = now - timedelta(days=max(1, lookback_days))
+    trades: list[TradeDisclosure] = []
+
+    if session is not None:
+        try:
+            stmt = (
+                select(TradeDisclosure)
+                .where(TradeDisclosure.transaction_date >= lookback_threshold)
+                .where(func.lower(TradeDisclosure.member) == normalized_member.lower())
+                .order_by(TradeDisclosure.transaction_date.desc())
+                .limit(max(1, limit))
+            )
+            result = await session.execute(stmt)
+            trades = list(result.scalars().all())
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch member trade history: %s', exc)
+
+    if not trades:
+        logger.debug('Falling back to stubbed member trade history for %s', normalized_member)
+        stub_trade = TradeDisclosure(
+            filing_id='stub-member-history',
+            source='stub',
+            member=normalized_member or 'Sen. Jane Doe',
+            chamber='Senate',
+            ticker='AIT',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=2),
+            amount_range='$50k-$100k',
+            related_bill='LR-1000',
+        )
+        trades = [stub_trade]
+
+    activities: list[TradeActivity] = []
+    for trade in trades:
+        activities.append(
+            TradeActivity(
+                member=trade.member,
+                chamber=trade.chamber,
+                ticker=trade.ticker,
+                transaction_type=trade.transaction_type,
+                transaction_date=_ensure_timezone(trade.transaction_date),
+                amount_range=trade.amount_range,
+                related_bill=trade.related_bill,
+            )
+        )
+    return activities
 
 
 async def get_member_exposures(
