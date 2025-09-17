@@ -51,7 +51,9 @@ A recurring task manager triggers `run_daily_ingestion` on startup based on `LEG
 
 ## Logging
 
-Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.## Sample data
+Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.
+
+## Sample data
 
 Populate the development database with representative records by running:
 
@@ -59,7 +61,9 @@ Populate the development database with representative records by running:
 python -m app.ingestion.sample_data --reset
 ```
 
-The command uses the configured `LEGALEDGE_DATABASE_URL` and seeds legislation, forecast, and trade tables for local testing.## Migrations
+The command uses the configured `LEGALEDGE_DATABASE_URL` and seeds legislation, forecast, and trade tables for local testing.
+
+## Migrations
 
 Alembic is configured in `alembic.ini`. After installing requirements, create or upgrade the schema with:
 
@@ -75,3 +79,15 @@ alembic revision --autogenerate -m "describe change"
 ```
 
 The migration environment pulls the connection string from `LEGALEDGE_DATABASE_URL`.
+
+## CLI utilities
+
+Run project helpers with the management CLI:
+
+```bash
+python -m app.cli seed-sample-data --reset  # seed development fixtures
+python -m app.cli run-ingestion-once       # trigger ingestion without waiting for the scheduler
+```
+
+The scheduler also invokes `run-ingestion-once` automatically on the configured cadence.
+
