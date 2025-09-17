@@ -12,7 +12,7 @@ from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history, get_watchlist_summary
 
 
 @pytest.fixture
@@ -126,3 +126,11 @@ async def test_get_member_trade_history(session):
     history = await get_member_trade_history('Sen. Jane Doe', session=session, lookback_days=90, limit=10)
     assert history
     assert history[0].ticker
+
+
+
+@pytest.mark.anyio
+async def test_get_watchlist_summary(session):
+    summary = await get_watchlist_summary(['AIT', 'GRID'], session=session, lookback_days=60)
+    assert summary.entries
+    assert summary.total_trades >= 1

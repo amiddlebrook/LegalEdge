@@ -91,3 +91,25 @@ class MemberExposure(BaseModel):
     tickers: dict[str, int]
     last_trade_at: datetime
 
+
+
+
+class WatchlistEntry(BaseModel):
+    """Summary of activity for a specific watchlist ticker."""
+
+    ticker: str
+    total_trades: int
+    buy_count: int
+    sell_count: int
+    members: list[str]
+    last_trade_at: datetime
+
+
+class WatchlistSnapshot(BaseModel):
+    """Aggregated metrics for a watchlist of tickers."""
+
+    generated_at: datetime
+    tickers_requested: list[str]
+    total_trades: int
+    entries: list[WatchlistEntry]
+

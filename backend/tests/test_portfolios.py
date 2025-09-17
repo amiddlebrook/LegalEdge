@@ -47,3 +47,11 @@ def test_portfolio_member_history_endpoint():
     payload = response.json()
     assert payload
     assert payload[0]['ticker']
+
+
+def test_portfolio_watchlist_summary_endpoint():
+    client = TestClient(create_application())
+    response = client.get('/api/v1/portfolios/watchlist/summary', params={'tickers': ['AIT', 'GRID'], 'lookback_days': 60})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['entries']

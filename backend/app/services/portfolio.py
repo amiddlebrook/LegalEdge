@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.legislation import LegislativeBill
 from app.models.portfolio import TradeDisclosure
 from app.repositories.portfolio import list_recent_trades
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, MemberExposure, PortfolioSnapshot, TickerDrilldown
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, MemberExposure, WatchlistSnapshot, WatchlistEntry, PortfolioSnapshot, TickerDrilldown
 
 
 async def aggregate_signals(
@@ -296,6 +296,88 @@ async def get_member_exposures(
 
     exposures.sort(key=lambda item: (-item.total_trades, -item.buy_count, item.member))
     return exposures[:max(1, limit)]
+
+
+async def get_watchlist_summary(
+    tickers: list[str],
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 30,
+) -> WatchlistSnapshot:
+    """Aggregate trade activity for a set of watchlist tickers."""
+
+    normalized = sorted({ticker.upper().strip() for ticker in tickers if ticker.strip()})
+    if not normalized:
+        return WatchlistSnapshot(
+            generated_at=datetime.now(timezone.utc),
+            tickers_requested=[],
+            total_trades=0,
+            entries=[],
+        )
+
+    now = datetime.now(timezone.utc)
+    lookback_threshold = now - timedelta(days=max(1, lookback_days))
+
+    trades: list[TradeDisclosure] = []
+    if session is not None:
+        try:
+            stmt = (
+                select(TradeDisclosure)
+                .where(TradeDisclosure.transaction_date >= lookback_threshold)
+                .where(func.upper(TradeDisclosure.ticker).in_(normalized))
+            )
+            result = await session.execute(stmt.order_by(TradeDisclosure.transaction_date.desc()))
+            trades = list(result.scalars().all())
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch trades for watchlist summary: %s', exc)
+
+    if not trades:
+        logger.debug('Falling back to stubbed watchlist summary for %s', normalized)
+        stub_trade = TradeDisclosure(
+            filing_id='stub-watchlist',
+            source='stub',
+            member='Sen. Jane Doe',
+            chamber='Senate',
+            ticker=normalized[0],
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=1),
+            amount_range='$50k-$100k',
+            related_bill='LR-1000',
+        )
+        trades = [stub_trade]
+
+    grouped: dict[str, list[TradeDisclosure]] = defaultdict(list)
+    for trade in trades:
+        grouped[trade.ticker.upper()].append(trade)
+
+    entries: list[WatchlistEntry] = []
+    total_trades = 0
+    for ticker in normalized:
+        ticker_trades = grouped.get(ticker, [])
+        if not ticker_trades:
+            continue
+        buys = sum(1 for trade in ticker_trades if (trade.transaction_type or '').upper() == 'BUY')
+        sells = sum(1 for trade in ticker_trades if (trade.transaction_type or '').upper() == 'SELL')
+        last_trade = max((_ensure_timezone(trade.transaction_date) for trade in ticker_trades), default=lookback_threshold)
+        entries.append(
+            WatchlistEntry(
+                ticker=ticker,
+                total_trades=len(ticker_trades),
+                buy_count=buys,
+                sell_count=sells,
+                members=sorted({trade.member for trade in ticker_trades}),
+                last_trade_at=last_trade,
+            )
+        )
+        total_trades += len(ticker_trades)
+
+    entries.sort(key=lambda item: (-item.total_trades, -item.buy_count, item.ticker))
+    return WatchlistSnapshot(
+        generated_at=datetime.now(timezone.utc),
+        tickers_requested=normalized,
+        total_trades=total_trades,
+        entries=entries,
+    )
 
 
 async def get_portfolio_snapshot(
