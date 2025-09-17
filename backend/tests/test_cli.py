@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -139,7 +139,7 @@ async def test_handle_connector_ingest_persists_when_not_dry_run(monkeypatch):
     async def fake_persist(collected, session):
         called['persist_called'] = True
         called['batches'] = collected
-        return NormalizationSummary(total_received=1, legislation_processed=1, created=1)
+        return NormalizationSummary(total_received=1, legislation_processed=0, filings_processed=1, trades_created=1)
 
     monkeypatch.setattr(cli, 'IngestionManager', lambda *args, **kwargs: DummyManager())
     monkeypatch.setattr(cli, 'persist_batches', fake_persist)

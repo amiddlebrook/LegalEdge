@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from app.ingestion.connectors import (
     CongressGovConnector,

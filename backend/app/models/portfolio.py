@@ -15,6 +15,8 @@ class TradeDisclosure(TimestampMixin, Base):
     __tablename__ = "trade_disclosures"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    filing_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    source: Mapped[str] = mapped_column(String(64), default='sec.filings')
     member: Mapped[str] = mapped_column(String(256), index=True)
     chamber: Mapped[str] = mapped_column(String(32), index=True)
     ticker: Mapped[str] = mapped_column(String(16), index=True)

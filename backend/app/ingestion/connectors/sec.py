@@ -16,7 +16,8 @@ class SecFilingsConnector(BasePollingConnector):
     async def _fetch(self) -> Iterable[IngestionArtifact]:
         now = datetime.now(timezone.utc)
         return [
-            IngestionArtifact(artifact_type='filing', 
+            IngestionArtifact(
+                artifact_type='filing',
                 source=self.source_name,
                 external_id='0001181431-25-000123',
                 jurisdiction='Federal',
@@ -27,10 +28,20 @@ class SecFilingsConnector(BasePollingConnector):
                 last_updated=now,
                 committees=['Senate Armed Services'],
                 sectors=['Technology'],
-                entities=['AIT'],
-                metadata={'filing_type': 'Form 4', 'transaction_type': 'BUY'},
+                entities=['AIT', 'LR-1000'],
+                metadata={
+                    'filing_type': 'Form 4',
+                    'member': 'Sen. Jane Doe',
+                    'chamber': 'Senate',
+                        'ticker': 'AIT',
+                    'transaction_type': 'BUY',
+                    'transaction_date': (now - timedelta(days=1)).isoformat(),
+                    'amount_range': '$15k-$50k',
+                    'related_bill': 'LR-1000',
+                },
             ),
-            IngestionArtifact(artifact_type='filing', 
+            IngestionArtifact(
+                artifact_type='filing',
                 source=self.source_name,
                 external_id='0000899243-25-000045',
                 jurisdiction='Federal',
@@ -41,11 +52,16 @@ class SecFilingsConnector(BasePollingConnector):
                 last_updated=now,
                 committees=[],
                 sectors=['Energy', 'Utilities'],
-                entities=['GRID'],
-                metadata={'filing_type': 'Schedule 13D', 'beneficial_owner': 'GRID Strategic Investors LLC'},
+                entities=['GRID', 'TX-SB-88'],
+                metadata={
+                    'filing_type': 'Schedule 13D',
+                    'beneficial_owner': 'GRID Strategic Investors LLC',
+                    'ticker': 'GRID',
+                    'position_pct': 7.5,
+                    'related_bill': 'TX-SB-88',
+                },
             ),
         ]
 
 
 __all__ = ['SecFilingsConnector']
-

@@ -1,12 +1,12 @@
-﻿import pytest
+import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.ingestion.persistence import NormalizationSummary, persist_artifacts, persist_batches
-from app.models import Base, LegislativeBill, LegislativeBillVersion
+from app.models import Base, LegislativeBill, LegislativeBillVersion, TradeDisclosure
 from app.schemas.ingestion import IngestionArtifact, IngestionBatch
 
 
@@ -41,6 +41,35 @@ def _make_artifact(**overrides):
         'sectors': ['Technology'],
         'entities': ['AIT'],
         'metadata': {},
+    }
+    base.update(overrides)
+    return IngestionArtifact(**base)
+
+
+def _make_filing(**overrides):
+    base = {
+        'artifact_type': 'filing',
+        'source': 'sec.filings',
+        'external_id': '0001181431-25-000123',
+        'jurisdiction': 'Federal',
+        'title': 'Form 4 - Test Member',
+        'summary': 'Form 4 trade disclosure.',
+        'stage': None,
+        'introduced_at': datetime.now(timezone.utc),
+        'last_updated': datetime.now(timezone.utc),
+        'committees': [],
+        'sectors': ['Technology'],
+        'entities': ['AIT', 'LR-1000'],
+        'metadata': {
+            'filing_type': 'Form 4',
+            'member': 'Test Member',
+            'chamber': 'Senate',
+            'ticker': 'AIT',
+            'transaction_type': 'BUY',
+            'transaction_date': datetime.now(timezone.utc).isoformat(),
+            'amount_range': '$15k-$50k',
+            'related_bill': 'LR-1000',
+        },
     }
     base.update(overrides)
     return IngestionArtifact(**base)
@@ -88,6 +117,21 @@ async def test_persist_artifacts_updates_existing_bill(session):
 
 
 @pytest.mark.anyio
+async def test_persist_artifacts_creates_trade_disclosure(session):
+    artifact = _make_filing()
+
+    summary = await persist_artifacts([artifact], session=session)
+
+    assert summary.trades_created == 1
+    assert summary.filings_processed == 1
+
+    result = await session.execute(select(TradeDisclosure).where(TradeDisclosure.filing_id == '0001181431-25-000123'))
+    trade = result.scalar_one()
+    assert trade.member == 'Test Member'
+    assert trade.related_bill == 'LR-1000'
+
+
+@pytest.mark.anyio
 async def test_persist_batches_skips_non_legislative(session):
     artifact = _make_artifact(artifact_type='news', source='news.rss', external_id='breaking-ait', summary='News item')
     batch = IngestionBatch(source='news.rss', pulled_at=datetime.now(timezone.utc), artifacts=[artifact])
@@ -95,4 +139,5 @@ async def test_persist_batches_skips_non_legislative(session):
     summary = await persist_batches([batch], session=session)
 
     assert summary.legislation_processed == 0
+    assert summary.filings_processed == 0
     assert summary.total_persisted == 0

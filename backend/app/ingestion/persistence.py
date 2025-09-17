@@ -1,4 +1,5 @@
 """Persistence helpers for ingestion artifacts."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.legislation import LegislativeBill, LegislativeBillVersion
+from app.models.portfolio import TradeDisclosure
 from app.schemas.ingestion import IngestionArtifact, IngestionBatch
 
 
@@ -19,21 +21,23 @@ class NormalizationSummary:
 
     total_received: int = 0
     legislation_processed: int = 0
+    filings_processed: int = 0
     created: int = 0
     updated: int = 0
     skipped: int = 0
     versions_created: int = 0
+    trades_created: int = 0
+    filings_skipped: int = 0
 
     @property
     def total_persisted(self) -> int:
-        return self.created + self.updated
+        return self.created + self.updated + self.trades_created
 
 
 def _normalize_timestamp(value: datetime) -> datetime:
     if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
-
 
 
 def _derive_next_action(artifact: IngestionArtifact) -> date | None:
@@ -98,6 +102,83 @@ async def _record_version(session: AsyncSession, bill: LegislativeBill) -> None:
     )
 
 
+def _extract_trade_fields(artifact: IngestionArtifact) -> dict[str, object]:
+    metadata = artifact.metadata or {}
+    member = metadata.get('member') or 'Unknown Member'
+    chamber = metadata.get('chamber') or 'Unknown'
+    ticker = metadata.get('ticker') or (artifact.entities[0] if artifact.entities else 'UNKNOWN')
+    transaction_type = metadata.get('transaction_type') or 'BUY'
+    amount_range = metadata.get('amount_range') or 'Unspecified'
+    related_bill = metadata.get('related_bill')
+    if not related_bill:
+        related_bill = next((entity for entity in artifact.entities if '-' in entity), None)
+
+    raw_date = metadata.get('transaction_date')
+    if isinstance(raw_date, datetime):
+        transaction_dt = _normalize_timestamp(raw_date)
+    else:
+        try:
+            transaction_dt = _normalize_timestamp(datetime.fromisoformat(raw_date))
+        except Exception:
+            transaction_dt = _normalize_timestamp(artifact.last_updated)
+
+    return {
+        'member': member,
+        'chamber': chamber,
+        'ticker': ticker,
+        'transaction_type': transaction_type,
+        'transaction_date': transaction_dt,
+        'amount_range': amount_range,
+        'related_bill': related_bill,
+    }
+
+
+async def _persist_filings(
+    filings: Iterable[IngestionArtifact],
+    session: AsyncSession,
+    summary: NormalizationSummary,
+) -> None:
+    filings = list(filings)
+    if not filings:
+        return
+
+    summary.filings_processed += len(filings)
+
+    filing_ids = [artifact.external_id for artifact in filings]
+    existing_ids: set[str] = set()
+    if filing_ids:
+        result = await session.execute(
+            select(TradeDisclosure.filing_id).where(TradeDisclosure.filing_id.in_(filing_ids))
+        )
+        existing_ids = {row[0] for row in result}
+
+    for artifact in filings:
+        filing_id = artifact.external_id
+        if filing_id in existing_ids:
+            summary.filings_skipped += 1
+            continue
+
+        filing_type = (artifact.metadata.get('filing_type') or '').lower()
+        if filing_type != 'form 4':
+            summary.filings_skipped += 1
+            continue
+
+        trade_fields = _extract_trade_fields(artifact)
+        trade = TradeDisclosure(
+            filing_id=filing_id,
+            source=artifact.source,
+            member=trade_fields['member'],
+            chamber=trade_fields['chamber'],
+            ticker=trade_fields['ticker'],
+            transaction_type=trade_fields['transaction_type'],
+            transaction_date=trade_fields['transaction_date'],
+            amount_range=trade_fields['amount_range'],
+            related_bill=trade_fields['related_bill'],
+        )
+        session.add(trade)
+        summary.trades_created += 1
+
+
 async def persist_artifacts(
     artifacts: Iterable[IngestionArtifact],
     session: AsyncSession,
@@ -108,96 +189,99 @@ async def persist_artifacts(
     legislative = [item for item in items if str(item.artifact_type).lower() == 'legislation']
     summary.legislation_processed = len(legislative)
 
-    if not legislative:
-        return summary
-
-    bill_ids = [artifact.external_id.upper() for artifact in legislative]
-    existing: dict[str, LegislativeBill] = {}
-    if bill_ids:
-        result = await session.execute(
-            select(LegislativeBill).where(LegislativeBill.bill_id.in_(bill_ids))
-        )
-        existing = {bill.bill_id: bill for bill in result.scalars().all()}
-
-    for artifact in legislative:
-        bill_id = artifact.external_id.upper()
-        next_action = _derive_next_action(artifact)
-        committees = _merge_list(None, artifact.committees)
-        sectors = _merge_list(None, artifact.sectors)
-        last_updated = _normalize_timestamp(artifact.last_updated)
-
-        bill = existing.get(bill_id)
-        if bill is None:
-            bill = LegislativeBill(
-                bill_id=bill_id,
-                title=artifact.title,
-                stage=artifact.stage or 'Introduced',
-                jurisdiction=artifact.jurisdiction,
-                committees=committees,
-                sectors=sectors,
-                summary=artifact.summary,
-                next_action_date=next_action,
-                last_updated=last_updated,
+    if legislative:
+        bill_ids = [artifact.external_id.upper() for artifact in legislative]
+        existing: dict[str, LegislativeBill] = {}
+        if bill_ids:
+            result = await session.execute(
+                select(LegislativeBill).where(LegislativeBill.bill_id.in_(bill_ids))
             )
-            session.add(bill)
-            await session.flush()
-            await _record_version(session, bill)
-            summary.created += 1
-            summary.versions_created += 1
-            existing[bill_id] = bill
-            continue
+            existing = {bill.bill_id: bill for bill in result.scalars().all()}
 
-        changed = False
-        if artifact.title and artifact.title != bill.title:
-            bill.title = artifact.title
-            changed = True
-        if artifact.stage and artifact.stage != bill.stage:
-            bill.stage = artifact.stage
-            changed = True
-        if artifact.summary and artifact.summary != bill.summary:
-            bill.summary = artifact.summary
-            changed = True
-        if artifact.jurisdiction and artifact.jurisdiction != bill.jurisdiction:
-            bill.jurisdiction = artifact.jurisdiction
-            changed = True
+        for artifact in legislative:
+            bill_id = artifact.external_id.upper()
+            next_action = _derive_next_action(artifact)
+            committees = _merge_list(None, artifact.committees)
+            sectors = _merge_list(None, artifact.sectors)
+            last_updated = _normalize_timestamp(artifact.last_updated)
 
-        merged_committees = _merge_list(bill.committees, committees)
-        if merged_committees != (bill.committees or []):
-            bill.committees = merged_committees
-            changed = True
+            bill = existing.get(bill_id)
+            if bill is None:
+                bill = LegislativeBill(
+                    bill_id=bill_id,
+                    title=artifact.title,
+                    stage=artifact.stage or 'Introduced',
+                    jurisdiction=artifact.jurisdiction,
+                    committees=committees,
+                    sectors=sectors,
+                    summary=artifact.summary,
+                    next_action_date=next_action,
+                    last_updated=last_updated,
+                )
+                session.add(bill)
+                await session.flush()
+                await _record_version(session, bill)
+                summary.created += 1
+                summary.versions_created += 1
+                existing[bill_id] = bill
+                continue
 
-        merged_sectors = _merge_list(bill.sectors, sectors)
-        if merged_sectors != (bill.sectors or []):
-            bill.sectors = merged_sectors
-            changed = True
+            changed = False
+            if artifact.title and artifact.title != bill.title:
+                bill.title = artifact.title
+                changed = True
+            if artifact.stage and artifact.stage != bill.stage:
+                bill.stage = artifact.stage
+                changed = True
+            if artifact.summary and artifact.summary != bill.summary:
+                bill.summary = artifact.summary
+                changed = True
+            if artifact.jurisdiction and artifact.jurisdiction != bill.jurisdiction:
+                bill.jurisdiction = artifact.jurisdiction
+                changed = True
 
-        if next_action and next_action != bill.next_action_date:
-            bill.next_action_date = next_action
-            changed = True
+            merged_committees = _merge_list(bill.committees, committees)
+            if merged_committees != (bill.committees or []):
+                bill.committees = merged_committees
+                changed = True
 
-        existing_last_updated = _normalize_timestamp(bill.last_updated)
-        if last_updated > existing_last_updated:
-            bill.last_updated = last_updated
-            changed = True
-        else:
-            bill.last_updated = existing_last_updated
+            merged_sectors = _merge_list(bill.sectors, sectors)
+            if merged_sectors != (bill.sectors or []):
+                bill.sectors = merged_sectors
+                changed = True
 
-        if changed:
-            await session.flush()
-            await _record_version(session, bill)
-            summary.updated += 1
-            summary.versions_created += 1
-        else:
-            summary.skipped += 1
+            if next_action and next_action != bill.next_action_date:
+                bill.next_action_date = next_action
+                changed = True
 
-    if summary.created or summary.updated:
+            existing_last_updated = _normalize_timestamp(bill.last_updated)
+            if last_updated > existing_last_updated:
+                bill.last_updated = last_updated
+                changed = True
+            else:
+                bill.last_updated = existing_last_updated
+
+            if changed:
+                await session.flush()
+                await _record_version(session, bill)
+                summary.updated += 1
+                summary.versions_created += 1
+            else:
+                summary.skipped += 1
+
+    filings = [item for item in items if str(item.artifact_type).lower() == 'filing']
+    if filings:
+        await _persist_filings(filings, session=session, summary=summary)
+
+    if summary.created or summary.updated or summary.trades_created:
         await session.commit()
         logger.info(
-            'Persisted %s legislative artifacts (%s created, %s updated, %s versions)',
+            'Persisted artifacts: %s bills processed (%s created, %s updated, %s versions); %s filings created',
             summary.legislation_processed,
             summary.created,
             summary.updated,
             summary.versions_created,
+            summary.trades_created,
         )
     elif session.in_transaction():
         await session.rollback()

@@ -80,13 +80,12 @@ async def _seed_forecasts(session: AsyncSession) -> int:
 
 
 async def _seed_trades(session: AsyncSession) -> int:
-    existing_trades = await session.execute(select(TradeDisclosure.ticker, TradeDisclosure.transaction_date))
-    existing_trade_keys = {(row[0], row[1]) for row in existing_trades}
+    existing_trades = await session.execute(select(TradeDisclosure.filing_id))
+    existing_trade_ids = {row[0] for row in existing_trades}
 
     created = 0
     for trade in _sample_trades():
-        key = (trade.ticker, trade.transaction_date)
-        if key in existing_trade_keys:
+        if trade.filing_id in existing_trade_ids:
             continue
         session.add(trade)
         created += 1
@@ -227,23 +226,24 @@ def _sample_forecasts() -> Iterable[ForecastSignal]:
 
 def _sample_trades() -> Iterable[TradeDisclosure]:
     base_time = datetime.now(timezone.utc) - timedelta(days=2)
-    for idx, (member, chamber, ticker, txn_type, related_bill) in enumerate(
-        [
-            ('Sen. Jane Doe', 'Senate', 'AIT', 'BUY', 'LR-1000'),
-            ('Rep. Alex Smith', 'House', 'REGN', 'BUY', 'CA-AB-452'),
-            ('Sen. Malik Johnson', 'Senate', 'GRID', 'SELL', 'TX-SB-88'),
-            ('Rep. Priya Chen', 'House', 'CSPN', 'BUY', 'NYC-INT-2045'),
-        ]
-    ):
+    for idx, (filing_id, member, chamber, ticker, txn_type, related_bill) in enumerate([
+        ('0001181431-24-000111', 'Sen. Jane Doe', 'Senate', 'AIT', 'BUY', 'LR-1000'),
+        ('0001181431-24-000112', 'Rep. Alex Smith', 'House', 'REGN', 'BUY', 'CA-AB-452'),
+        ('0001181431-24-000113', 'Sen. Malik Johnson', 'Senate', 'GRID', 'SELL', 'TX-SB-88'),
+        ('0001181431-24-000114', 'Rep. Priya Chen', 'House', 'CSPN', 'BUY', 'NYC-INT-2045'),
+    ]):
         yield TradeDisclosure(
+            filing_id=filing_id,
+            source='seed.sample',
             member=member,
             chamber=chamber,
             ticker=ticker,
             transaction_type=txn_type,
             transaction_date=base_time - timedelta(hours=idx * 6),
-            amount_range='$15k-$50k',
+            amount_range='-',
             related_bill=related_bill,
         )
+
 
 
 def _sample_alerts() -> Iterable[PolicyAlert]:
@@ -352,3 +352,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
