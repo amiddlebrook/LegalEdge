@@ -1,4 +1,4 @@
-"""News and RSS connector."""
+﻿"""News and RSS connector."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -16,7 +16,7 @@ class NewsRssConnector(BasePollingConnector):
     async def _fetch(self) -> Iterable[IngestionArtifact]:
         now = datetime.now(timezone.utc)
         return [
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='news', 
                 source=self.source_name,
                 external_id='policywire-ait-2025-09-17',
                 jurisdiction='Federal',
@@ -30,7 +30,7 @@ class NewsRssConnector(BasePollingConnector):
                 entities=['AIT'],
                 metadata={'publisher': 'PolicyWire', 'url': 'https://policywire.example/ait-ai-modernization'},
             ),
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='news', 
                 source=self.source_name,
                 external_id='energywatch-grid-2025-09-17',
                 jurisdiction='Texas',
@@ -48,3 +48,4 @@ class NewsRssConnector(BasePollingConnector):
 
 
 __all__ = ['NewsRssConnector']
+

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 class IngestionArtifact(BaseModel):
     """Normalized artifact emitted by ingestion connectors."""
 
+    artifact_type: Literal['legislation', 'filing', 'news'] | str
     source: Literal['congress.gov', 'state_portal', 'sec.filings', 'news.rss'] | str
     external_id: str
     jurisdiction: str

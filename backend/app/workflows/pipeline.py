@@ -1,4 +1,4 @@
-"""Workflow orchestrators for ingestion and predictions."""
+﻿"""Workflow orchestrators for ingestion and predictions."""
 from collections.abc import Callable
 
 from loguru import logger
@@ -8,7 +8,7 @@ from app.schemas.legislation import BillImpactRequest
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import analyze_legislation, get_upcoming_legislation
 from app.services.portfolio import aggregate_signals
-from app.ingestion import IngestionManager, get_default_connectors
+from app.ingestion import IngestionManager, get_default_connectors, persist_batches
 
 
 async def run_daily_ingestion(
@@ -31,6 +31,12 @@ async def run_daily_ingestion(
         if enqueued:
             batches = await manager.drain_batches()
             logger.info('Ingestion connectors queued %s artifacts across %s sources', enqueued, len(batches))
+            if active_session is not None:
+                summary = await persist_batches(batches, session=active_session)
+                if summary.total_persisted:
+                    logger.info('Normalized %s legislative artifacts (%s created, %s updated)', summary.legislation_processed, summary.created, summary.updated)
+                else:
+                    logger.debug('No legislative updates detected during connector persistence')
 
     if session is not None:
         await _ingest(session)

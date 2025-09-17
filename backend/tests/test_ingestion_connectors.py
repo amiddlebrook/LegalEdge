@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 
 from app.ingestion.connectors import (
     CongressGovConnector,
@@ -21,6 +21,7 @@ async def test_congress_connector_emits_artifacts():
     batch = await connector.poll()
     assert batch
     assert all(item.source == 'congress.gov' for item in batch)
+    assert all(item.artifact_type == 'legislation' for item in batch)
 
 
 @pytest.mark.anyio
@@ -31,6 +32,8 @@ async def test_state_and_sec_connectors_return_unique_ids():
     sec_ids = {item.external_id for item in sec_batch}
     assert state_ids
     assert sec_ids
+    assert all(item.artifact_type == 'legislation' for item in state_batch)
+    assert all(item.artifact_type == 'filing' for item in sec_batch)
     assert state_ids.isdisjoint(sec_ids)
 
 

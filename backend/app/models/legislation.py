@@ -1,10 +1,10 @@
-"""SQLAlchemy models for legislative data."""
+﻿"""SQLAlchemy models for legislative data."""
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import List
+from datetime import date, datetime, timezone
+from typing import Any, List
 
-from sqlalchemy import Date, DateTime, Float, JSON, String
+from sqlalchemy import Date, DateTime, Float, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -30,3 +30,18 @@ class LegislativeBill(TimestampMixin, Base):
 
     def __repr__(self) -> str:
         return f"LegislativeBill(bill_id={self.bill_id!r}, stage={self.stage!r})"
+
+class LegislativeBillVersion(Base):
+    """Versioned snapshots for legislative artifacts."""
+
+    __tablename__ = "legislative_bill_versions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bill_id: Mapped[str] = mapped_column(String(64), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+    __table_args__ = (UniqueConstraint('bill_id', 'version', name='uq_bill_version'),)
+
+

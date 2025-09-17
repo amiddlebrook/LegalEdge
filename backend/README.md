@@ -101,6 +101,7 @@ Run project helpers with the management CLI:
 ```bash
 python -m app.cli seed-sample-data --reset  # seed development fixtures
 python -m app.cli run-ingestion-once       # trigger ingestion without waiting for the scheduler
+python -m app.cli ingest-connectors --runs 1  # poll connectors (add --dry-run to skip persistence)
 ```
 
 The scheduler also invokes `run-ingestion-once` automatically on the configured cadence.

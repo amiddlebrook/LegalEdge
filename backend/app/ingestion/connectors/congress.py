@@ -1,4 +1,4 @@
-"""Connector for congress.gov."""
+﻿"""Connector for congress.gov."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -16,7 +16,7 @@ class CongressGovConnector(BasePollingConnector):
     async def _fetch(self) -> Iterable[IngestionArtifact]:
         now = datetime.now(timezone.utc)
         return [
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='legislation', 
                 source=self.source_name,
                 external_id='hr-8890',
                 jurisdiction='Federal',
@@ -30,7 +30,7 @@ class CongressGovConnector(BasePollingConnector):
                 entities=['AIT'],
                 metadata={'chamber': 'House', 'sponsor': 'Rep. Alex Smith'},
             ),
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='legislation', 
                 source=self.source_name,
                 external_id='s-3241',
                 jurisdiction='Federal',
@@ -48,3 +48,4 @@ class CongressGovConnector(BasePollingConnector):
 
 
 __all__ = ['CongressGovConnector']
+

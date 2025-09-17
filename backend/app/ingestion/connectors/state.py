@@ -1,4 +1,4 @@
-"""State legislature connector."""
+﻿"""State legislature connector."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -16,7 +16,7 @@ class StatePortalConnector(BasePollingConnector):
     async def _fetch(self) -> Iterable[IngestionArtifact]:
         now = datetime.now(timezone.utc)
         return [
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='legislation', 
                 source=self.source_name,
                 external_id='ca-ab-452',
                 jurisdiction='California',
@@ -30,7 +30,7 @@ class StatePortalConnector(BasePollingConnector):
                 entities=['REGN'],
                 metadata={'hearing_date': (now + timedelta(days=4)).isoformat()},
             ),
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='legislation', 
                 source=self.source_name,
                 external_id='tx-sb-88',
                 jurisdiction='Texas',
@@ -48,3 +48,4 @@ class StatePortalConnector(BasePollingConnector):
 
 
 __all__ = ['StatePortalConnector']
+

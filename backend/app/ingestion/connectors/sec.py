@@ -1,4 +1,4 @@
-"""SEC filings connector."""
+﻿"""SEC filings connector."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -16,7 +16,7 @@ class SecFilingsConnector(BasePollingConnector):
     async def _fetch(self) -> Iterable[IngestionArtifact]:
         now = datetime.now(timezone.utc)
         return [
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='filing', 
                 source=self.source_name,
                 external_id='0001181431-25-000123',
                 jurisdiction='Federal',
@@ -30,7 +30,7 @@ class SecFilingsConnector(BasePollingConnector):
                 entities=['AIT'],
                 metadata={'filing_type': 'Form 4', 'transaction_type': 'BUY'},
             ),
-            IngestionArtifact(
+            IngestionArtifact(artifact_type='filing', 
                 source=self.source_name,
                 external_id='0000899243-25-000045',
                 jurisdiction='Federal',
@@ -48,3 +48,4 @@ class SecFilingsConnector(BasePollingConnector):
 
 
 __all__ = ['SecFilingsConnector']
+

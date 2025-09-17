@@ -2,9 +2,10 @@ import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.models import Base, LegislativeBill
+from app.models import Base, LegislativeBill, LegislativeBillVersion
 from app.workflows.pipeline import run_daily_ingestion
 
 
@@ -45,5 +46,19 @@ async def session_factory():
 
 @pytest.mark.anyio
 async def test_run_daily_ingestion_uses_session_factory(session_factory):
-    # Should not raise when a session factory is provided
     await run_daily_ingestion(session_factory=session_factory)
+
+    async with session_factory() as session:
+        result = await session.execute(
+            select(LegislativeBill).where(LegislativeBill.bill_id == 'HR-8890')
+        )
+        bill = result.scalar_one_or_none()
+        assert bill is not None
+
+        versions = await session.execute(
+            select(LegislativeBillVersion).where(
+                LegislativeBillVersion.bill_id == 'HR-8890'
+            )
+        )
+        assert versions.scalars().all()
+
