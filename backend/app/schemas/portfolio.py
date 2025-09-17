@@ -78,3 +78,16 @@ class PortfolioSnapshot(BaseModel):
     buy_sell_ratio: float | None
     top_tickers: list[TickerDrilldown]
 
+
+class MemberExposure(BaseModel):
+    """Rollup of a member's recent trading activity."""
+
+    member: str
+    chambers: list[str]
+    total_trades: int
+    buy_count: int
+    sell_count: int
+    net_flow: str
+    tickers: dict[str, int]
+    last_trade_at: datetime
+

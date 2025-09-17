@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import maybe_get_session
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint, MemberExposure
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures
 
 
 router = APIRouter(prefix="/portfolios", tags=["Portfolios"])
@@ -54,6 +54,21 @@ async def portfolio_timeline(
     return await get_trade_activity_timeline(
         session=session, lookback_days=lookback_days, tickers=tickers
     )
+
+
+@router.get(
+    '/members/exposures',
+    response_model=list[MemberExposure],
+    summary='Member trading exposure',
+)
+async def portfolio_member_exposures(
+    lookback_days: int = Query(default=30, ge=1, le=120),
+    limit: int = Query(default=10, ge=1, le=50),
+    session: AsyncSession | None = Depends(maybe_get_session),
+) -> list[MemberExposure]:
+    """Expose trading activity rollups per congressional member."""
+
+    return await get_member_exposures(session=session, lookback_days=lookback_days, limit=limit)
 @router.get(
     "/conflicts",
     response_model=list[ConflictInsight],

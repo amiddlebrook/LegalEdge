@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.legislation import LegislativeBill
 from app.models.portfolio import TradeDisclosure
 from app.repositories.portfolio import list_recent_trades
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, PortfolioSnapshot, TickerDrilldown
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, MemberExposure, PortfolioSnapshot, TickerDrilldown
 
 
 async def aggregate_signals(
@@ -162,6 +162,76 @@ async def get_trade_activity_timeline(
         )
 
     return timeline
+
+
+async def get_member_exposures(
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 30,
+    limit: int = 10,
+) -> list[MemberExposure]:
+    """Summarize trading activity per congressional member."""
+
+    now = datetime.now(timezone.utc)
+    lookback_threshold = now - timedelta(days=max(1, lookback_days))
+
+    trades: list[TradeDisclosure] = []
+    if session is not None:
+        try:
+            stmt = select(TradeDisclosure).where(TradeDisclosure.transaction_date >= lookback_threshold)
+            result = await session.execute(stmt.order_by(TradeDisclosure.transaction_date.desc()))
+            trades = list(result.scalars().all())
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch trades for member exposures: %s', exc)
+
+    if not trades:
+        logger.debug('Falling back to stubbed member exposure data')
+        stub_trade = TradeDisclosure(
+            filing_id='stub-member',
+            source='stub',
+            member='Sen. Jane Doe',
+            chamber='Senate',
+            ticker='AIT',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=2),
+            amount_range='$50k-$100k',
+            related_bill='LR-1000',
+        )
+        trades = [stub_trade]
+
+    grouped: dict[str, list[TradeDisclosure]] = defaultdict(list)
+    for trade in trades:
+        grouped[trade.member].append(trade)
+
+    exposures: list[MemberExposure] = []
+    for member, member_trades in grouped.items():
+        buys = sum(1 for trade in member_trades if (trade.transaction_type or '').upper() == 'BUY')
+        sells = sum(1 for trade in member_trades if (trade.transaction_type or '').upper() == 'SELL')
+        net_flow = 'neutral'
+        if buys > sells:
+            net_flow = 'accumulating'
+        elif sells > buys:
+            net_flow = 'reducing'
+        ticker_counts: dict[str, int] = defaultdict(int)
+        chambers = sorted({trade.chamber for trade in member_trades})
+        last_trade = max((_ensure_timezone(trade.transaction_date) for trade in member_trades), default=lookback_threshold)
+        for trade in member_trades:
+            ticker_counts[trade.ticker] += 1
+        exposures.append(
+            MemberExposure(
+                member=member,
+                chambers=chambers,
+                total_trades=len(member_trades),
+                buy_count=buys,
+                sell_count=sells,
+                net_flow=net_flow,
+                tickers=dict(sorted(ticker_counts.items(), key=lambda item: (-item[1], item[0]))),
+                last_trade_at=last_trade,
+            )
+        )
+
+    exposures.sort(key=lambda item: (-item.total_trades, -item.buy_count, item.member))
+    return exposures[:max(1, limit)]
 
 
 async def get_portfolio_snapshot(
