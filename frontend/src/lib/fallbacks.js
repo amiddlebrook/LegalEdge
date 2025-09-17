@@ -163,6 +163,7 @@ export const fallbackDashboard = {
       relatedEntities: ['LR-1000', 'AIT'],
     },
   ],
+  alertPreferences: { min_severity: 'medium' },
   opportunities: [
     {
       ticker: 'AIT',
@@ -249,4 +250,5 @@ export const fallbackDashboard = {
     'Real-time news and RSS signals',
   ],
 }
+
 

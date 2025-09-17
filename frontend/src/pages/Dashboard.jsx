@@ -12,6 +12,12 @@ import { fallbackDashboard } from '../lib/fallbacks.js'
 
 const sectors = ['Technology', 'Financial Services', 'Healthcare', 'Energy', 'Industrials']
 const horizonOptions = [30, 45, 60, 90, 120]
+const alertSeverityOptions = [
+  { value: 'all', label: 'All severities' },
+  { value: 'medium', label: 'Medium+' },
+  { value: 'high', label: 'High only' },
+]
+const alertCategoryOptions = ['all', 'Legislation', 'Congressional Trades', 'State Policy', 'Infrastructure']
 
 export function DashboardPage() {
   const { fetchResource, peek } = useApiCache()
@@ -24,6 +30,8 @@ export function DashboardPage() {
     legislationLimit: 6,
     opportunityLimit: 6,
     conflictLimit: 4,
+    alertSeverity: 'all',
+    alertCategory: 'all',
   })
   const [drawerDetail, setDrawerDetail] = useState(null)
 
@@ -31,7 +39,7 @@ export function DashboardPage() {
     let aborted = false
 
     const snapshotKey = 'dashboard-snapshot'
-    const alertsKey = `alerts-${filters.legislationLimit}`
+    const alertsKey = `alerts-${filters.legislationLimit}-${filters.alertCategory}-${filters.alertSeverity}`
     const opportunitiesKey = `opportunities-${filters.opportunityLimit}`
     const legislationKey = `legislation-${filters.legislationLimit}`
     const forecastKey = `forecast-${filters.sector}-${filters.horizon}`
@@ -65,7 +73,7 @@ export function DashboardPage() {
           conflictsPayload,
         ] = await Promise.all([
           fetchResource(snapshotKey, api.fetchDashboardSnapshot).catch(() => null),
-          fetchResource(alertsKey, () => api.fetchAlerts({ limit: filters.legislationLimit })).catch(() => null),
+          fetchResource(alertsKey, () => api.fetchAlerts(alertParams)).catch(() => null),
           fetchResource(opportunitiesKey, () => api.fetchOpportunities({ limit: filters.opportunityLimit })).catch(() => null),
           fetchResource(legislationKey, () => api.fetchLegislation({ limit: filters.legislationLimit })).catch(() => null),
           fetchResource(forecastKey, () =>
@@ -102,7 +110,7 @@ export function DashboardPage() {
     return () => {
       aborted = true
     }
-  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.conflictLimit, filters.sector])
+  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.conflictLimit, filters.alertSeverity, filters.alertCategory, filters.sector])
 
   const legislationRows = useMemo(
     () => dashboard.upcomingLegislation.slice(0, filters.legislationLimit),
@@ -412,6 +420,7 @@ function composeDashboard({
     conflictRisks: base.conflictRisks ?? fallbackDashboard.conflictRisks,
     alerts: base.alerts ?? fallbackDashboard.alerts,
     opportunities: base.opportunities ?? fallbackDashboard.opportunities,
+    alertPreferences: base.alertPreferences ?? null,
   }
 
   if (snapshot?.upcoming_legislation?.length) {
@@ -430,8 +439,29 @@ function composeDashboard({
     result.conflictRisks = conflictsPayload.map(mapConflict)
   }
 
+  if (snapshot?.alert_preferences) {
+    result.alertPreferences = snapshot.alert_preferences
+  }
+
   if (alertsPayload?.alerts?.length) {
     result.alerts = alertsPayload.alerts.map(mapAlert)
+  }
+
+  if (alertsPayload?.applied_filters) {
+    result.alertPreferences = alertsPayload.applied_filters
+  }
+
+  if (!result.alertPreferences) {
+    const manualFilters = {}
+    if (filters.alertSeverity !== 'all') {
+      manualFilters.min_severity = filters.alertSeverity
+    }
+    if (filters.alertCategory !== 'all') {
+      manualFilters.categories = [filters.alertCategory]
+    }
+    if (Object.keys(manualFilters).length) {
+      result.alertPreferences = manualFilters
+    }
   }
 
   if (opportunitiesPayload?.opportunities?.length) {
@@ -531,6 +561,24 @@ function mapAlert(alert) {
   }
 }
 
+function formatAlertFilters(preferences) {
+  if (!preferences) return ''
+  const parts = []
+  if (preferences.min_severity) {
+    parts.push(`Min severity ${preferences.min_severity}`)
+  }
+  if (Array.isArray(preferences.categories) && preferences.categories.length) {
+    parts.push(`Categories: ${preferences.categories.join(', ')}`)
+  }
+  if (preferences.entity) {
+    parts.push(`Entity ${preferences.entity}`)
+  }
+  if (preferences.since_minutes) {
+    parts.push(`Last ${preferences.since_minutes} min`)
+  }
+  return parts.join(' · ')
+}
+
 function mapOpportunity(item) {
   return {
     ticker: item.ticker,
@@ -563,3 +611,13 @@ function formatDate(value) {
     year: 'numeric',
   })
 }
+
+
+
+
+
+
+
+
+
+

@@ -24,7 +24,7 @@ The API is exposed under `/api/v1` and is organized around the core business cap
 - `GET /api/v1/dashboard/snapshot` - aggregates legislation, forecast, and portfolio signals for the investor view.
 - `GET /api/v1/legislation/upcoming` - multi-jurisdiction legislative feed for UI prototyping and ingestion warmups.
 - `GET /api/v1/opportunities` - market opportunity engine recommendations.
-- `GET /api/v1/alerts` - policy and trading alerts feed.
+- `GET /api/v1/alerts` - policy and trading alerts feed with optional filtering (`categories`, `severities`, `min_severity`, `entity`, `since_minutes`).
 - `GET /api/v1/coverage` - jurisdiction coverage, ingestion latency, and trade surveillance health.
 - `GET /api/v1/health/status` - simple liveness probe for infra checks.
 
@@ -102,4 +102,5 @@ python -m app.cli run-ingestion-once       # trigger ingestion without waiting f
 ```
 
 The scheduler also invokes `run-ingestion-once` automatically on the configured cadence.
+
 

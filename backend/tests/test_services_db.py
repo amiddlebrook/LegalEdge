@@ -80,3 +80,4 @@ async def test_detect_conflicts_uses_database(session):
     assert insights
     assert insights[0].risk_score > 0
     assert insights[0].ticker
+

@@ -1,6 +1,8 @@
 """Alert and notification schemas."""
 from datetime import datetime
 
+from typing import Any, Dict
+
 from pydantic import BaseModel
 
 
@@ -21,3 +23,4 @@ class AlertFeed(BaseModel):
 
     generated_at: datetime
     alerts: list[AlertMessage]
+    applied_filters: Dict[str, Any] | None = None
