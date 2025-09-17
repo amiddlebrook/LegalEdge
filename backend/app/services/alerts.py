@@ -24,7 +24,7 @@ async def get_alert_feed(
         else:
             if alerts:
                 return AlertFeed(
-                    generated_at=alerts[0].created_at,
+                    generated_at=alerts[0].raised_at,
                     alerts=[
                         AlertMessage(
                             id=alert.alert_key,
@@ -32,7 +32,7 @@ async def get_alert_feed(
                             title=alert.title,
                             description=alert.description,
                             severity=alert.severity,
-                            created_at=alert.created_at,
+                            created_at=alert.raised_at,
                             related_entities=list(alert.related_entities or []),
                         )
                         for alert in alerts

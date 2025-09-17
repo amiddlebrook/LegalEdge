@@ -249,7 +249,7 @@ def _sample_alerts() -> Iterable[PolicyAlert]:
             title=title,
             description='Development seed alert for investor awareness.',
             severity=severity,
-            created_at=now - timedelta(hours=idx * 6),
+            raised_at=now - timedelta(hours=idx * 6),
             related_entities=entities,
         )
 

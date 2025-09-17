@@ -59,4 +59,19 @@ Populate the development database with representative records by running:
 python -m app.ingestion.sample_data --reset
 ```
 
-The command uses the configured `LEGALEDGE_DATABASE_URL` and seeds legislation, forecast, and trade tables for local testing.
+The command uses the configured `LEGALEDGE_DATABASE_URL` and seeds legislation, forecast, and trade tables for local testing.## Migrations
+
+Alembic is configured in `alembic.ini`. After installing requirements, create or upgrade the schema with:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Generate new migrations after model changes:
+
+```bash
+alembic revision --autogenerate -m "describe change"
+```
+
+The migration environment pulls the connection string from `LEGALEDGE_DATABASE_URL`.

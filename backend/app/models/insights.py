@@ -21,7 +21,7 @@ class PolicyAlert(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(512))
     description: Mapped[str] = mapped_column(String)
     severity: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    raised_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     related_entities: Mapped[List[str]] = mapped_column(JSON, default=list)
 
 
