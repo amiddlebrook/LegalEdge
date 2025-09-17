@@ -8,6 +8,7 @@ from app.ingestion.sample_data import seed_sample_data
 from app.models import Base, ForecastSignal, LegislativeBill, OpportunityRecommendation, PolicyAlert, TradeDisclosure
 from app.services.alerts import get_alert_feed
 from app.services.coverage import get_coverage_summary
+from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
@@ -81,3 +82,15 @@ async def test_detect_conflicts_uses_database(session):
     assert insights[0].risk_score > 0
     assert insights[0].ticker
 
+
+
+@pytest.mark.anyio
+async def test_build_entity_resolution_summary(session):
+    summary = await build_entity_resolution_summary(session=session)
+    assert summary.metrics.total_bills > 0
+    assert summary.metrics.coverage_ratio > 0
+    assert summary.metrics.coverage_ratio <= 1
+    assert any(link.bill_id == 'LR-1000' for link in summary.bill_links)
+    lr1000 = next(link for link in summary.bill_links if link.bill_id == 'LR-1000')
+    assert 'AIT' in lr1000.tickers
+    assert lr1000.coverage_score > 0

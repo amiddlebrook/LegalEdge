@@ -26,6 +26,7 @@ The API is exposed under `/api/v1` and is organized around the core business cap
 - `GET /api/v1/opportunities` - market opportunity engine recommendations.
 - `GET /api/v1/alerts` - policy and trading alerts feed with optional filtering (`categories`, `severities`, `min_severity`, `entity`, `since_minutes`).
 - `GET /api/v1/coverage` - jurisdiction coverage, ingestion latency, and trade surveillance health.
+- `GET /api/v1/entity-resolution/summary` - bill-to-ticker linkage coverage and resolution metrics.
 - `GET /api/v1/health/status` - simple liveness probe for infra checks.
 
 
