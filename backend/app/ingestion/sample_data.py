@@ -230,8 +230,9 @@ def _sample_trades() -> Iterable[TradeDisclosure]:
     for idx, (member, chamber, ticker, txn_type, related_bill) in enumerate(
         [
             ('Sen. Jane Doe', 'Senate', 'AIT', 'BUY', 'LR-1000'),
-            ('Rep. Alex Smith', 'House', 'REGN', 'BUY', 'LR-1001'),
-            ('Sen. Malik Johnson', 'Senate', 'GRID', 'SELL', None),
+            ('Rep. Alex Smith', 'House', 'REGN', 'BUY', 'CA-AB-452'),
+            ('Sen. Malik Johnson', 'Senate', 'GRID', 'SELL', 'TX-SB-88'),
+            ('Rep. Priya Chen', 'House', 'CSPN', 'BUY', 'NYC-INT-2045'),
         ]
     ):
         yield TradeDisclosure(

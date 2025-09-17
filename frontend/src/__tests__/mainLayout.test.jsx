@@ -39,6 +39,16 @@ vi.mock('../lib/api.js', () => ({
       generated_on: new Date().toISOString(),
       signals: [],
     }),
+    fetchPortfolioConflicts: vi.fn().mockResolvedValue([{
+      ticker: 'AIT',
+      member: 'Sen. Jane Doe',
+      risk_score: 0.72,
+      confidence: 0.65,
+      rationale: 'Test rationale',
+      transaction_type: 'BUY',
+      transaction_date: new Date().toISOString(),
+      amount_range: '$50k-$100k',
+    }]),
     fetchCoverage: vi.fn().mockResolvedValue({
       jurisdictions: [],
       state_programs: [],
@@ -97,6 +107,7 @@ describe('MainLayout prefetch', () => {
       expect(api.fetchOpportunities).toHaveBeenCalledTimes(1)
       expect(api.fetchLegislation).toHaveBeenCalledTimes(1)
       expect(api.fetchForecast).toHaveBeenCalledTimes(1)
+      expect(api.fetchPortfolioConflicts).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -109,3 +120,4 @@ describe('MainLayout prefetch', () => {
     })
   })
 })
+

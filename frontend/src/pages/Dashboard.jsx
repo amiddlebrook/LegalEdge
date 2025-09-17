@@ -4,7 +4,7 @@ import { AlertBanner } from '../components/AlertBanner.jsx'
 import { DetailDrawer } from '../components/DetailDrawer.jsx'
 import { ForecastSignalCard } from '../components/ForecastSignalCard.jsx'
 import { LegislationCard } from '../components/LegislationCard.jsx'
-import { OpportunityCard } from '../components/OpportunityCard.jsx'
+import { OpportunityCard } from '../components/OpportunityCard.jsx'\nimport { ConflictRiskCard } from '../components/ConflictRiskCard.jsx'
 import { PortfolioSignalCard } from '../components/PortfolioSignalCard.jsx'
 import { useApiCache } from '../context/ApiCacheContext.jsx'
 import { api } from '../lib/api.js'
@@ -23,6 +23,7 @@ export function DashboardPage() {
     horizon: 30,
     legislationLimit: 6,
     opportunityLimit: 6,
+    conflictLimit: 4,
   })
   const [drawerDetail, setDrawerDetail] = useState(null)
 
@@ -34,6 +35,7 @@ export function DashboardPage() {
     const opportunitiesKey = `opportunities-${filters.opportunityLimit}`
     const legislationKey = `legislation-${filters.legislationLimit}`
     const forecastKey = `forecast-${filters.sector}-${filters.horizon}`
+    const conflictsKey = `portfolio-conflicts-${filters.conflictLimit}`
 
     const cached = composeDashboard({
       snapshot: peek(snapshotKey),
@@ -41,6 +43,7 @@ export function DashboardPage() {
       opportunitiesPayload: peek(opportunitiesKey),
       legislationPayload: peek(legislationKey),
       forecastPayload: peek(forecastKey),
+      conflictsPayload: peek(conflictsKey),
       fallback: dashboard,
       filters,
     })
@@ -53,7 +56,14 @@ export function DashboardPage() {
     ;(async () => {
       try {
         setStatus(cached === dashboard ? 'loading' : 'refresh')
-        const [snapshot, alertsPayload, opportunitiesPayload, legislationPayload, forecastPayload] = await Promise.all([
+        const [
+          snapshot,
+          alertsPayload,
+          opportunitiesPayload,
+          legislationPayload,
+          forecastPayload,
+          conflictsPayload,
+        ] = await Promise.all([
           fetchResource(snapshotKey, api.fetchDashboardSnapshot).catch(() => null),
           fetchResource(alertsKey, () => api.fetchAlerts({ limit: filters.legislationLimit })).catch(() => null),
           fetchResource(opportunitiesKey, () => api.fetchOpportunities({ limit: filters.opportunityLimit })).catch(() => null),
@@ -61,6 +71,7 @@ export function DashboardPage() {
           fetchResource(forecastKey, () =>
             api.fetchForecast({ sector: filters.sector, horizon_days: filters.horizon }),
           ).catch(() => null),
+          fetchResource(conflictsKey, () => api.fetchPortfolioConflicts({ limit: filters.conflictLimit })).catch(() => null),
         ])
 
         if (aborted) return
@@ -71,6 +82,7 @@ export function DashboardPage() {
             opportunitiesPayload,
             legislationPayload,
             forecastPayload,
+            conflictsPayload,
             fallback: dashboard,
             filters,
           }),
@@ -90,7 +102,7 @@ export function DashboardPage() {
     return () => {
       aborted = true
     }
-  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.sector])
+  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.conflictLimit, filters.sector])
 
   const legislationRows = useMemo(
     () => dashboard.upcomingLegislation.slice(0, filters.legislationLimit),
@@ -274,6 +286,25 @@ export function DashboardPage() {
         </div>
       </section>
 
+      <section>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Conflict watchlist</h2>
+            <p className="text-sm text-slate-400">
+              Flags congressional trades that intersect with legislation momentum.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          {dashboard.conflictRisks.map((conflict) => (
+            <ConflictRiskCard
+              key={`${conflict.ticker}-${conflict.member}-${conflict.transactionDate}`}
+              {...conflict}
+            />
+          ))}
+        </div>
+      </section>
+
       <DetailDrawer open={Boolean(drawerDetail)} title={drawerTitle(drawerDetail)} onClose={closeDrawer}>
         {drawerDetail?.type === 'alert' ? <AlertDetail alert={drawerDetail.data} /> : null}
         {drawerDetail?.type === 'bill' ? <BillDetail bill={drawerDetail.data} /> : null}
@@ -369,6 +400,7 @@ function composeDashboard({
   opportunitiesPayload,
   legislationPayload,
   forecastPayload,
+  conflictsPayload,
   fallback,
   filters,
 }) {
@@ -377,6 +409,7 @@ function composeDashboard({
     upcomingLegislation: base.upcomingLegislation ?? fallbackDashboard.upcomingLegislation,
     sectorForecast: base.sectorForecast ?? fallbackDashboard.sectorForecast,
     portfolioSignals: base.portfolioSignals ?? fallbackDashboard.portfolioSignals,
+    conflictRisks: base.conflictRisks ?? fallbackDashboard.conflictRisks,
     alerts: base.alerts ?? fallbackDashboard.alerts,
     opportunities: base.opportunities ?? fallbackDashboard.opportunities,
   }
@@ -389,6 +422,12 @@ function composeDashboard({
 
   if (snapshot?.portfolio_signals?.length) {
     result.portfolioSignals = snapshot.portfolio_signals.map(mapPortfolioSignal)
+  }
+
+  if (snapshot?.portfolio_conflicts?.length) {
+    result.conflictRisks = snapshot.portfolio_conflicts.map(mapConflict)
+  } else if (Array.isArray(conflictsPayload) && conflictsPayload.length) {
+    result.conflictRisks = conflictsPayload.map(mapConflict)
   }
 
   if (alertsPayload?.alerts?.length) {
@@ -458,6 +497,25 @@ function mapPortfolioSignal(signal) {
       amountRange: trade.amount_range ?? trade.amountRange,
       relatedBill: trade.related_bill ?? trade.relatedBill,
     })),
+  }
+}
+
+function mapConflict(conflict) {
+  return {
+    ticker: conflict.ticker,
+    member: conflict.member,
+    chamber: conflict.chamber,
+    transactionType: conflict.transaction_type ?? conflict.transactionType,
+    transactionDate: conflict.transaction_date ?? conflict.transactionDate,
+    amountRange: conflict.amount_range ?? conflict.amountRange,
+    billId: conflict.bill_id ?? conflict.billId ?? null,
+    billTitle: conflict.bill_title ?? conflict.billTitle ?? 'Associated legislation pending',
+    billStage: conflict.bill_stage ?? conflict.billStage ?? 'Pending',
+    jurisdiction: conflict.jurisdiction ?? 'Federal',
+    nextActionDate: conflict.next_action_date ?? conflict.nextActionDate ?? null,
+    riskScore: conflict.risk_score ?? conflict.riskScore ?? 0,
+    confidence: conflict.confidence ?? 0,
+    rationale: conflict.rationale ?? 'Conflict rationale unavailable.',
   }
 }
 

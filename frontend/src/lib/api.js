@@ -52,7 +52,11 @@ export const api = {
   fetchPortfolioSignals(params = {}) {
     return apiFetch(`/portfolios/signals${buildQuery(params)}`)
   },
+  fetchPortfolioConflicts(params = {}) {
+    return apiFetch(`/portfolios/conflicts${buildQuery(params)}`)
+  },
   fetchCoverage() {
     return apiFetch('/coverage')
   },
 }
+

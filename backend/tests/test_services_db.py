@@ -11,7 +11,7 @@ from app.services.coverage import get_coverage_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import aggregate_signals
+from app.services.portfolio import aggregate_signals, detect_conflicts
 
 
 @pytest.fixture
@@ -73,3 +73,10 @@ async def test_get_coverage_summary_uses_database(session):
     assert any(item.name == 'Federal' for item in summary.jurisdictions)
     assert summary.processing_health.ingestion_latency_minutes >= 0
 
+
+@pytest.mark.anyio
+async def test_detect_conflicts_uses_database(session):
+    insights = await detect_conflicts(limit=3, session=session)
+    assert insights
+    assert insights[0].risk_score > 0
+    assert insights[0].ticker

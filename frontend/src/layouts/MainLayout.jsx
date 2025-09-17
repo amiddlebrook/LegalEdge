@@ -26,6 +26,7 @@ export function MainLayout() {
     fetchResource('forecast-Technology-30', () =>
       api.fetchForecast({ sector: 'Technology', horizon_days: 30 }),
     ).catch(() => {})
+    fetchResource('portfolio-conflicts-6', () => api.fetchPortfolioConflicts({ limit: 6 })).catch(() => {})
   }, [fetchResource])
   const prefetchCoverage = useCallback(() => {
     fetchResource('coverage', api.fetchCoverage).catch(() => {})

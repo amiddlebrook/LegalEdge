@@ -134,6 +134,24 @@ export const fallbackDashboard = {
       ],
     },
   ],
+  conflictRisks: [
+    {
+      ticker: 'AIT',
+      member: 'Sen. Jane Doe',
+      chamber: 'Senate',
+      transactionType: 'BUY',
+      transactionDate: new Date().toISOString(),
+      amountRange: '$50k-$100k',
+      billId: 'LR-1000',
+      billTitle: 'AI Accountability and Transparency Act',
+      billStage: 'Committee',
+      jurisdiction: 'Federal',
+      nextActionDate: new Date(Date.now() + 7 * 86400000).toISOString(),
+      riskScore: 0.72,
+      confidence: 0.65,
+      rationale: 'Senate accumulation ahead of AI accountability markup signals conflict exposure.',
+    },
+  ],
   alerts: [
     {
       id: 'alert-hr1000',
