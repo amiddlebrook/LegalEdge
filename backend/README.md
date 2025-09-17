@@ -17,6 +17,18 @@ The API is exposed under `/api/v1` and is organized around the core business cap
 - `forecasts` - surfacing AI-driven predictive signals tied to sectors and tickers.
 - `portfolios` - correlating congressional trades with pending policy for conflict insights.
 
+
+## API surface
+
+- `GET /api/v1/overview` - hero copy, feature pillars, success metrics, and workflow data consumed by the React client.
+- `GET /api/v1/dashboard/snapshot` - aggregates legislation, forecast, and portfolio signals for the investor view.
+- `GET /api/v1/legislation/upcoming` - multi-jurisdiction legislative feed for UI prototyping and ingestion warmups.
+- `GET /api/v1/opportunities` - market opportunity engine recommendations.
+- `GET /api/v1/alerts` - policy and trading alerts feed.
+- `GET /api/v1/coverage` - jurisdiction coverage, ingestion latency, and trade surveillance health.
+- `GET /api/v1/health/status` - simple liveness probe for infra checks.
+
+
 ## Project structure
 
 ```

@@ -122,37 +122,66 @@ async def _seed_opportunities(session: AsyncSession) -> int:
 def _sample_bills() -> Iterable[LegislativeBill]:
     now = datetime.now(timezone.utc)
     base_next_action = date.today() + timedelta(days=7)
-    for idx, (title, committees, sectors) in enumerate(
-        [
-            (
-                'AI Accountability and Transparency Act',
-                ['House Energy & Commerce'],
-                ['Technology', 'Financial Services'],
-            ),
-            (
-                'Responsible Algorithmic Governance Act',
-                ['Senate Commerce, Science & Transportation'],
-                ['Technology', 'Industrials'],
-            ),
-            (
-                'Cyber Resilience for Critical Infrastructure Act',
-                ['House Homeland Security'],
-                ['Energy', 'Utilities'],
-            ),
-        ]
-    ):
+    records = [
+        {
+            'bill_id': 'LR-1000',
+            'title': 'AI Accountability and Transparency Act',
+            'stage': 'Committee',
+            'jurisdiction': 'Federal',
+            'committees': ['House Energy & Commerce'],
+            'sectors': ['Technology', 'Financial Services'],
+            'summary': 'Establishes reporting standards for AI-driven trading systems.',
+            'sentiment': 0.42,
+            'probability': 0.31,
+        },
+        {
+            'bill_id': 'CA-AB-452',
+            'title': 'California Algorithmic Accountability Framework',
+            'stage': 'Assembly',
+            'jurisdiction': 'California',
+            'committees': ['Assembly Privacy & Consumer Protection'],
+            'sectors': ['Technology', 'Consumer Protection'],
+            'summary': 'Expands audit mandates for automated decision systems used in consumer finance.',
+            'sentiment': 0.47,
+            'probability': 0.28,
+        },
+        {
+            'bill_id': 'NYC-INT-2045',
+            'title': 'NYC Smart City Oversight Ordinance',
+            'stage': 'City Council',
+            'jurisdiction': 'New York City',
+            'committees': ['City Council Technology Committee'],
+            'sectors': ['Smart Cities', 'Infrastructure'],
+            'summary': 'Requires transparency reporting for municipal AI and IoT deployments.',
+            'sentiment': 0.39,
+            'probability': 0.22,
+        },
+        {
+            'bill_id': 'TX-SB-88',
+            'title': 'Texas Critical Infrastructure Cyber Resilience Act',
+            'stage': 'Senate',
+            'jurisdiction': 'Texas',
+            'committees': ['Senate Business & Commerce'],
+            'sectors': ['Energy', 'Utilities'],
+            'summary': 'Mandates cyber drills and reporting for privately operated grid assets.',
+            'sentiment': 0.52,
+            'probability': 0.34,
+        },
+    ]
+
+    for idx, record in enumerate(records):
         yield LegislativeBill(
-            bill_id=f'LR-{1000 + idx}',
-            title=title,
-            stage='Committee',
-            jurisdiction='Federal',
-            committees=committees,
-            sectors=sectors,
-            summary='Policy briefing placeholder generated for development seeding.',
+            bill_id=record['bill_id'],
+            title=record['title'],
+            stage=record['stage'],
+            jurisdiction=record['jurisdiction'],
+            committees=record['committees'],
+            sectors=record['sectors'],
+            summary=record['summary'],
             next_action_date=base_next_action + timedelta(days=idx * 3),
-            sentiment_score=0.4 + idx * 0.05,
-            probability_of_enactment=0.25 + idx * 0.08,
-            last_updated=now,
+            sentiment_score=record['sentiment'],
+            probability_of_enactment=record['probability'],
+            last_updated=now - timedelta(minutes=idx * 7),
         )
 
 

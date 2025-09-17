@@ -165,4 +165,70 @@ export const fallbackDashboard = {
       riskRating: 'balanced',
     },
   ],
+}\n\nexport const fallbackCoverage = {
+  generatedAt: new Date().toISOString(),
+  jurisdictions: [
+    {
+      name: 'Federal',
+      billsMonitored: 128,
+      committeesTracked: 46,
+      coverageRatio: 0.85,
+      lastUpdated: new Date().toISOString(),
+    },
+    {
+      name: 'California',
+      billsMonitored: 42,
+      committeesTracked: 18,
+      coverageRatio: 0.7,
+      lastUpdated: new Date(Date.now() - 9 * 60000).toISOString(),
+    },
+    {
+      name: 'New York City',
+      billsMonitored: 21,
+      committeesTracked: 9,
+      coverageRatio: 0.6,
+      lastUpdated: new Date(Date.now() - 12 * 60000).toISOString(),
+    },
+  ],
+  statePrograms: [
+    {
+      state: 'California',
+      status: 'live',
+      lastSynced: new Date(Date.now() - 9 * 60000).toISOString(),
+      feeds: ['Assembly Privacy & Consumer Protection', 'Senate Judiciary'],
+    },
+    {
+      state: 'Texas',
+      status: 'beta',
+      lastSynced: new Date(Date.now() - 14 * 60000).toISOString(),
+      feeds: ['Senate Business & Commerce'],
+    },
+    {
+      state: 'Florida',
+      status: 'planned',
+      lastSynced: new Date(Date.now() - 2 * 3600000).toISOString(),
+      feeds: ['House Commerce Committee'],
+    },
+  ],
+  processingHealth: {
+    ingestionLatencyMinutes: 3.2,
+    processingSlaMinutes: 5,
+    pipelinesActive: 12,
+    lastIngestionRun: new Date(Date.now() - 3 * 60000).toISOString(),
+    detectionBacklog: 4,
+  },
+  tradeSurveillance: {
+    activeWatchlistMembers: 38,
+    disclosuresLast7Days: 62,
+    conflictsFlaggedLast30Days: 11,
+    highPriorityAlerts: 7,
+  },
+  dataSources: [
+    'congress.gov',
+    'State legislature portals',
+    'SEC EDGAR & financial disclosures',
+    'Municipal open data feeds',
+    'Real-time news and RSS signals',
+  ],
 }
+

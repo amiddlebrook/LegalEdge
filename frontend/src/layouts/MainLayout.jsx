@@ -7,6 +7,7 @@ import { api } from '../lib/api.js'
 const navItems = [
   { to: '/', label: 'Overview', key: 'overview' },
   { to: '/dashboard', label: 'Dashboard', key: 'dashboard' },
+  { to: '/coverage', label: 'Coverage', key: 'coverage' },
 ]
 
 export function MainLayout() {
@@ -26,10 +27,14 @@ export function MainLayout() {
       api.fetchForecast({ sector: 'Technology', horizon_days: 30 }),
     ).catch(() => {})
   }, [fetchResource])
+  const prefetchCoverage = useCallback(() => {
+    fetchResource('coverage', api.fetchCoverage).catch(() => {})
+  }, [fetchResource])
 
   const prefetchHandlers = {
     overview: prefetchOverview,
     dashboard: prefetchDashboard,
+    coverage: prefetchCoverage,
   }
 
   const handlePrefetch = useCallback(

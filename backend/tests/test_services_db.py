@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.ingestion.sample_data import seed_sample_data
 from app.models import Base, ForecastSignal, LegislativeBill, OpportunityRecommendation, PolicyAlert, TradeDisclosure
 from app.services.alerts import get_alert_feed
+from app.services.coverage import get_coverage_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
@@ -63,3 +64,12 @@ async def test_get_market_opportunities_uses_database(session):
     payload = await get_market_opportunities(limit=3, session=session)
     assert payload.opportunities
     assert payload.opportunities[0].ticker
+
+
+@pytest.mark.anyio
+async def test_get_coverage_summary_uses_database(session):
+    summary = await get_coverage_summary(session=session)
+    assert summary.jurisdictions
+    assert any(item.name == 'Federal' for item in summary.jurisdictions)
+    assert summary.processing_health.ingestion_latency_minutes >= 0
+

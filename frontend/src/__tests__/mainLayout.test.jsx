@@ -39,6 +39,24 @@ vi.mock('../lib/api.js', () => ({
       generated_on: new Date().toISOString(),
       signals: [],
     }),
+    fetchCoverage: vi.fn().mockResolvedValue({
+      jurisdictions: [],
+      state_programs: [],
+      processing_health: {
+        ingestion_latency_minutes: 3,
+        processing_sla_minutes: 5,
+        pipelines_active: 10,
+        last_ingestion_run: new Date().toISOString(),
+        detection_backlog: 2,
+      },
+      trade_surveillance: {
+        active_watchlist_members: 0,
+        disclosures_last_7_days: 0,
+        conflicts_flagged_last_30_days: 0,
+        high_priority_alerts: 0,
+      },
+      data_sources: [],
+    }),
   },
 }))
 
@@ -50,6 +68,7 @@ const renderWithProviders = () =>
           <Route element={<MainLayout />}>
             <Route index element={<div />} />
             <Route path="dashboard" element={<div />} />
+            <Route path="coverage" element={<div />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -78,6 +97,15 @@ describe('MainLayout prefetch', () => {
       expect(api.fetchOpportunities).toHaveBeenCalledTimes(1)
       expect(api.fetchLegislation).toHaveBeenCalledTimes(1)
       expect(api.fetchForecast).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  test('prefetches coverage data on hover', async () => {
+    const { getByText } = renderWithProviders()
+    fireEvent.mouseEnter(getByText('Coverage'))
+
+    await vi.waitFor(() => {
+      expect(api.fetchCoverage).toHaveBeenCalledTimes(1)
     })
   })
 })
