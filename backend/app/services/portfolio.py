@@ -1,5 +1,7 @@
 """Portfolio monitoring service stubs."""
 from collections import defaultdict
+import csv
+from io import StringIO
 from datetime import datetime, timedelta, timezone, time as dtime
 
 from loguru import logger
@@ -524,3 +526,82 @@ def _score_conflict(trade: TradeDisclosure, bill: LegislativeBill | None) -> tup
 
 
 
+
+
+async def export_portfolio_snapshot_csv(
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 30,
+    top_n: int = 5,
+) -> str:
+    """Generate CSV for the portfolio snapshot analytics."""
+
+    snapshot = await get_portfolio_snapshot(
+        session=session, lookback_days=lookback_days, top_n=top_n
+    )
+    rows = [
+        ['Metric', 'Value'],
+        ['Generated At', snapshot.generated_at.isoformat()],
+        ['Total Trades (30d)', snapshot.total_trades_30d],
+        ['Unique Members', snapshot.unique_members],
+        ['Unique Tickers', snapshot.unique_tickers],
+        ['Filings Last 7d', snapshot.filings_last_7d],
+        ['Buy/Sell Ratio', snapshot.buy_sell_ratio if snapshot.buy_sell_ratio is not None else 'N/A'],
+    ]
+    rows.append([])
+    rows.append(['Top Tickers'])
+    rows.append(['Ticker', 'Total Trades', 'Buy Count', 'Sell Count', 'Net Flow', 'Members', 'Chambers', 'Last Trade'])
+    for entry in snapshot.top_tickers:
+        rows.append([
+            entry.ticker,
+            entry.total_trades,
+            entry.buy_count,
+            entry.sell_count,
+            entry.net_flow,
+            '; '.join(entry.members),
+            '; '.join(entry.chambers),
+            entry.last_trade_at.isoformat(),
+        ])
+
+    return _rows_to_csv(rows)
+
+
+async def export_member_trade_history_csv(
+    member: str,
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 180,
+    limit: int = 50,
+) -> str:
+    """Generate CSV for a member's trade history."""
+
+    history = await get_member_trade_history(
+        member, session=session, lookback_days=lookback_days, limit=limit
+    )
+    rows = [['Member', 'Chamber', 'Ticker', 'Type', 'Date', 'Amount Range', 'Related Bill']]
+    for item in history:
+        rows.append([
+            item.member,
+            item.chamber,
+            item.ticker,
+            item.transaction_type,
+            item.transaction_date.isoformat(),
+            item.amount_range,
+            item.related_bill or '',
+        ])
+    return _rows_to_csv(rows)
+
+
+def _rows_to_csv(rows: list[list[object]]) -> str:
+    """Convert rows to CSV string."""
+
+    output: list[str] = []
+    for row in rows:
+        if not row:
+            output.append('')
+        else:
+            stream = StringIO()
+            writer = csv.writer(stream)
+            writer.writerow(row)
+            output.append(stream.getvalue().strip())
+    return '\n'.join(output)

@@ -211,3 +211,39 @@ def test_main_dispatches_connector_ingest(monkeypatch):
     cli.main()
 
     assert called['args'] == (3, True, False)
+
+
+@pytest.mark.anyio
+async def test_handle_export_portfolio_snapshot(monkeypatch, tmp_path):
+    called = {}
+
+    async def fake_export_portfolio_snapshot_csv(*, session=None, lookback_days, top_n):
+        called['params'] = (lookback_days, top_n)
+        return 'Metric,Value\nTotal,1'
+
+    monkeypatch.setattr(cli, 'SessionLocal', DummySessionFactory({}))
+    monkeypatch.setattr(cli, 'export_portfolio_snapshot_csv', fake_export_portfolio_snapshot_csv)
+
+    output_file = tmp_path / 'snapshot.csv'
+    await cli.handle_export_portfolio_snapshot(lookback_days=45, top_n=7, output=str(output_file))
+
+    assert called['params'] == (45, 7)
+    assert output_file.read_text() == 'Metric,Value\nTotal,1'
+
+
+@pytest.mark.anyio
+async def test_handle_export_member_trades(monkeypatch, tmp_path):
+    called = {}
+
+    async def fake_export_member_trade_history_csv(member, *, session=None, lookback_days, limit):
+        called['params'] = (member, lookback_days, limit)
+        return 'Member,Ticker\nTest,ABC'
+
+    monkeypatch.setattr(cli, 'SessionLocal', DummySessionFactory({}))
+    monkeypatch.setattr(cli, 'export_member_trade_history_csv', fake_export_member_trade_history_csv)
+
+    output_file = tmp_path / 'member.csv'
+    await cli.handle_export_member_trades('Sen. Test', lookback_days=90, limit=25, output=str(output_file))
+
+    assert called['params'] == ('Sen. Test', 90, 25)
+    assert output_file.read_text() == 'Member,Ticker\nTest,ABC'
