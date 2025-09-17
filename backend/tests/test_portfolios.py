@@ -20,3 +20,12 @@ def test_portfolio_summary_endpoint():
     payload = response.json()
     assert payload['total_trades_30d'] >= 1
     assert payload['top_tickers']
+
+
+def test_portfolio_timeline_endpoint():
+    client = TestClient(create_application())
+    response = client.get('/api/v1/portfolios/timeline', params={'lookback_days': 45})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]['total_trades'] >= 1

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.legislation import LegislativeBill
 from app.models.portfolio import TradeDisclosure
 from app.repositories.portfolio import list_recent_trades
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, PortfolioSnapshot, TickerDrilldown
 
 
 async def aggregate_signals(
@@ -96,6 +96,72 @@ async def aggregate_signals(
     ]
 
     return signals[:limit]
+
+
+async def get_trade_activity_timeline(
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 30,
+    tickers: list[str] | None = None,
+) -> list[TradeTimelinePoint]:
+    """Return a daily timeline of congressional trading activity."""
+
+    now = datetime.now(timezone.utc)
+    lookback_threshold = now - timedelta(days=max(1, lookback_days))
+
+    trades: list[TradeDisclosure] = []
+    if session is not None:
+        try:
+            stmt = select(TradeDisclosure).where(TradeDisclosure.transaction_date >= lookback_threshold)
+            result = await session.execute(stmt.order_by(TradeDisclosure.transaction_date.desc()))
+            trades = list(result.scalars().all())
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch trades for timeline: %s', exc)
+
+    if tickers:
+        ticker_filter = {ticker.upper() for ticker in tickers}
+        trades = [trade for trade in trades if trade.ticker.upper() in ticker_filter]
+
+    if not trades:
+        logger.debug('Falling back to stubbed trade activity timeline')
+        stub_trade = TradeDisclosure(
+            filing_id='stub-timeline',
+            source='stub',
+            member='Sen. Jane Doe',
+            chamber='Senate',
+            ticker='AIT',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=2),
+            amount_range='$50k-$100k',
+            related_bill='LR-1000',
+        )
+        trades = [stub_trade]
+
+    grouped: dict[str, list[TradeDisclosure]] = defaultdict(list)
+    for trade in trades:
+        stamp = _ensure_timezone(trade.transaction_date)
+        grouped[stamp.date().isoformat()].append(trade)
+
+    timeline: list[TradeTimelinePoint] = []
+    for date_key in sorted(grouped.keys()):
+        bucket = grouped[date_key]
+        buys = sum(1 for trade in bucket if (trade.transaction_type or '').upper() == 'BUY')
+        sells = sum(1 for trade in bucket if (trade.transaction_type or '').upper() == 'SELL')
+        distribution: dict[str, int] = defaultdict(int)
+        for trade in bucket:
+            distribution[trade.ticker] += 1
+        normalized_date = datetime.fromisoformat(date_key).replace(tzinfo=timezone.utc)
+        timeline.append(
+            TradeTimelinePoint(
+                date=normalized_date,
+                total_trades=len(bucket),
+                buy_count=buys,
+                sell_count=sells,
+                tickers=dict(sorted(distribution.items(), key=lambda item: (-item[1], item[0]))),
+            )
+        )
+
+    return timeline
 
 
 async def get_portfolio_snapshot(

@@ -44,6 +44,16 @@ class ConflictInsight(BaseModel):
     confidence: float
     rationale: str
 
+class TradeTimelinePoint(BaseModel):
+    """Aggregated activity metrics for a specific day."""
+
+    date: datetime
+    total_trades: int
+    buy_count: int
+    sell_count: int
+    tickers: dict[str, int]
+
+
 class TickerDrilldown(BaseModel):
     """Aggregated activity metrics for a ticker."""
 
