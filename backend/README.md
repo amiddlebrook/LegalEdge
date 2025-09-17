@@ -61,6 +61,7 @@ Repository helpers in `app/repositories` provide async query utilities and will 
 ## Background ingestion
 
 A recurring task manager triggers `run_daily_ingestion` on startup based on `LEGALEDGE_INGESTION_SCHEDULE_MINUTES`. When a database connection is configured, the task opens its own session (using `SessionLocal`) to exercise the ingestion pathways, paving the way for Prefect, Celery, or AWS-native jobs once real pipelines are wired.
+A connector manager now polls congress.gov, high-priority state portals, SEC Form 4/13D filings, and curated news feeds with rate limiting and deduplication before downstream workflows.
 
 ## Logging
 

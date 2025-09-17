@@ -3,7 +3,7 @@
 This document tracks outstanding work required to ship the LegalEdge platform as outlined in the product brief. Update it as tasks are completed or new needs emerge.
 
 ## Legislative & Data Ingestion
-- [ ] Build connectors for congress.gov, state portals, SEC Form 4/13D, and news/RSS feeds with resilient polling and rate limiting.
+- [x] Build connectors for congress.gov, state portals, SEC Form 4/13D, and news/RSS feeds with resilient polling and rate limiting.
 - [ ] Normalize, deduplicate, and version legislative artifacts in PostgreSQL with jurisdiction coverage metrics.
 - [x] Implement entity resolution linking bills to tickers, committees, sectors, and maintain data quality dashboards.
 

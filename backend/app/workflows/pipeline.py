@@ -8,6 +8,7 @@ from app.schemas.legislation import BillImpactRequest
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import analyze_legislation, get_upcoming_legislation
 from app.services.portfolio import aggregate_signals
+from app.ingestion import IngestionManager, get_default_connectors
 
 
 async def run_daily_ingestion(
@@ -24,6 +25,12 @@ async def run_daily_ingestion(
             logger.debug('Ingestion warm-up retrieved %s bills', len(bills))
         else:
             await get_upcoming_legislation(limit=5)
+
+        manager = IngestionManager(get_default_connectors())
+        enqueued = await manager.poll_once()
+        if enqueued:
+            batches = await manager.drain_batches()
+            logger.info('Ingestion connectors queued %s artifacts across %s sources', enqueued, len(batches))
 
     if session is not None:
         await _ingest(session)
