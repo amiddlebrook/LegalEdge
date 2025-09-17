@@ -168,7 +168,7 @@ async def detect_conflicts(
             chamber='Senate',
             transaction_type='BUY',
             transaction_date=now - timedelta(days=2),
-            amount_range='-',
+            amount_range='$50k-$100k',
             bill_id='LR-1000',
             bill_title='AI Accountability and Transparency Act',
             bill_stage='Committee',
@@ -184,7 +184,7 @@ async def detect_conflicts(
             chamber='House',
             transaction_type='BUY',
             transaction_date=now - timedelta(days=1, hours=4),
-            amount_range='-',
+            amount_range='$15k-$50k',
             bill_id='CA-AB-452',
             bill_title='California Algorithmic Accountability Framework',
             bill_stage='Assembly',
@@ -232,4 +232,9 @@ def _score_conflict(trade: TradeDisclosure, bill: LegislativeBill | None) -> tup
         f"{trade.member} {trade.transaction_type.lower()} disclosure overlaps with {stage_phrase} action on {bill.title}."
     )
     return risk, confidence, rationale
+
+
+
+
+
 
