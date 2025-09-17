@@ -40,6 +40,8 @@ SQLAlchemy models live under `app/models` and cover:
 - `LegislativeBill` – normalized legislation metadata, jurisdiction, sector tags, and scoring fields.
 - `ForecastSignal` – sector/ticker forecasts with expected return, confidence, and catalysts.
 - `TradeDisclosure` – congressional trade disclosures linked back to legislation when available.
+- `PolicyAlert` – persisted alert feed items tying policy signals to entities.
+- `OpportunityRecommendation` – market opportunity engine outputs with conviction, horizon, catalysts, and risk ratings.
 
 Repository helpers in `app/repositories` provide async query utilities and will back future ingestion pipelines.
 
