@@ -12,7 +12,7 @@ from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history
 
 
 @pytest.fixture
@@ -118,3 +118,11 @@ async def test_get_member_exposures(session):
     exposures = await get_member_exposures(session=session, lookback_days=60, limit=5)
     assert exposures
     assert exposures[0].total_trades >= 1
+
+
+
+@pytest.mark.anyio
+async def test_get_member_trade_history(session):
+    history = await get_member_trade_history('Sen. Jane Doe', session=session, lookback_days=90, limit=10)
+    assert history
+    assert history[0].ticker

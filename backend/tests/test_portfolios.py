@@ -38,3 +38,12 @@ def test_portfolio_member_exposures_endpoint():
     payload = response.json()
     assert payload
     assert payload[0]['total_trades'] >= 1
+
+
+def test_portfolio_member_history_endpoint():
+    client = TestClient(create_application())
+    response = client.get('/api/v1/portfolios/members/Sen.%20Jane%20Doe/trades', params={'lookback_days': 90, 'limit': 10})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]['ticker']

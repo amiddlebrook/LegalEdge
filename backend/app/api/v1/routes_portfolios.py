@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import maybe_get_session
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint, MemberExposure
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint, MemberExposure, TradeActivity
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history
 
 
 router = APIRouter(prefix="/portfolios", tags=["Portfolios"])
@@ -69,6 +69,24 @@ async def portfolio_member_exposures(
     """Expose trading activity rollups per congressional member."""
 
     return await get_member_exposures(session=session, lookback_days=lookback_days, limit=limit)
+
+
+@router.get(
+    '/members/{member}/trades',
+    response_model=list[TradeActivity],
+    summary='Member trade history',
+)
+async def portfolio_member_history(
+    member: str,
+    lookback_days: int = Query(default=180, ge=1, le=365),
+    limit: int = Query(default=50, ge=1, le=200),
+    session: AsyncSession | None = Depends(maybe_get_session),
+) -> list[TradeActivity]:
+    """Expose detailed trade history for a specific member."""
+
+    return await get_member_trade_history(
+        member=member, session=session, lookback_days=lookback_days, limit=limit
+    )
 @router.get(
     "/conflicts",
     response_model=list[ConflictInsight],
