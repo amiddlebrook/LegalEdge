@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 from contextlib import asynccontextmanager
+from functools import partial
 from typing import AsyncIterator
 
 from fastapi import FastAPI
@@ -9,6 +10,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.tasks import RecurringTaskManager
+from app.db.session import SessionLocal
 from app.workflows.pipeline import run_daily_ingestion
 
 
@@ -17,8 +19,9 @@ def create_application() -> FastAPI:
 
     configure_logging()
 
+    ingestion_job = partial(run_daily_ingestion, session_factory=SessionLocal)
     task_manager = RecurringTaskManager(
-        run_daily_ingestion,
+        ingestion_job,
         interval_minutes=settings.ingestion_schedule_minutes,
         run_immediately=True,
     )
