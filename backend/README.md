@@ -49,4 +49,12 @@ A recurring task manager triggers `run_daily_ingestion` on startup based on `LEG
 
 ## Logging
 
-Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.
+Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.## Sample data
+
+Populate the development database with representative records by running:
+
+```bash
+python -m app.ingestion.sample_data --reset
+```
+
+The command uses the configured `LEGALEDGE_DATABASE_URL` and seeds legislation, forecast, and trade tables for local testing.
