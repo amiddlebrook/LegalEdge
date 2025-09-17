@@ -1,19 +1,49 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
+import { useApiCache } from '../context/ApiCacheContext.jsx'
+import { api } from '../lib/api.js'
+
 const navItems = [
-  { to: '/', label: 'Overview' },
-  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/', label: 'Overview', key: 'overview' },
+  { to: '/dashboard', label: 'Dashboard', key: 'dashboard' },
 ]
 
 export function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { fetchResource } = useApiCache()
+
+  const prefetchOverview = useCallback(() => {
+    fetchResource('overview', api.fetchOverview).catch(() => {})
+  }, [fetchResource])
+
+  const prefetchDashboard = useCallback(() => {
+    fetchResource('dashboard-snapshot', api.fetchDashboardSnapshot).catch(() => {})
+    fetchResource('alerts-6', () => api.fetchAlerts({ limit: 6 })).catch(() => {})
+    fetchResource('opportunities-6', () => api.fetchOpportunities({ limit: 6 })).catch(() => {})
+    fetchResource('legislation-6', () => api.fetchLegislation({ limit: 6 })).catch(() => {})
+    fetchResource('forecast-Technology-30', () =>
+      api.fetchForecast({ sector: 'Technology', horizon_days: 30 }),
+    ).catch(() => {})
+  }, [fetchResource])
+
+  const prefetchHandlers = {
+    overview: prefetchOverview,
+    dashboard: prefetchDashboard,
+  }
+
+  const handlePrefetch = useCallback(
+    (key) => {
+      prefetchHandlers[key]?.()
+    },
+    [prefetchHandlers],
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" className="text-lg font-semibold tracking-tight text-white">
+          <Link to="/" className="text-lg font-semibold tracking-tight text-white" onMouseEnter={prefetchOverview}>
             LegalEdge
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-medium text-slate-300 md:flex">
@@ -21,6 +51,9 @@ export function MainLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onMouseEnter={() => handlePrefetch(item.key)}
+                onFocus={() => handlePrefetch(item.key)}
+                onTouchStart={() => handlePrefetch(item.key)}
                 className={({ isActive }) =>
                   `transition hover:text-white ${isActive ? 'text-primary' : ''}`
                 }
@@ -50,6 +83,9 @@ export function MainLayout() {
                   }`
                 }
                 onClick={() => setIsMenuOpen(false)}
+                onFocus={() => handlePrefetch(item.key)}
+                onMouseEnter={() => handlePrefetch(item.key)}
+                onTouchStart={() => handlePrefetch(item.key)}
               >
                 {item.label}
               </NavLink>
