@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { AlertBanner } from '../components/AlertBanner.jsx'
-import { DetailDrawer } from '../components/DetailDrawer.jsx'
+import { ConflictRiskCard } from '../components/ConflictRiskCard.jsx'
 import { ForecastSignalCard } from '../components/ForecastSignalCard.jsx'
 import { LegislationCard } from '../components/LegislationCard.jsx'
-import { OpportunityCard } from '../components/OpportunityCard.jsx'\nimport { ConflictRiskCard } from '../components/ConflictRiskCard.jsx'
+import { OpportunityCard } from '../components/OpportunityCard.jsx'
 import { PortfolioSignalCard } from '../components/PortfolioSignalCard.jsx'
 import { useApiCache } from '../context/ApiCacheContext.jsx'
 import { api } from '../lib/api.js'
@@ -12,38 +12,65 @@ import { fallbackDashboard } from '../lib/fallbacks.js'
 
 const sectors = ['Technology', 'Financial Services', 'Healthcare', 'Energy', 'Industrials']
 const horizonOptions = [30, 45, 60, 90, 120]
+const riskRatingOptions = ['low', 'balanced', 'medium', 'high']
 const alertSeverityOptions = [
   { value: 'all', label: 'All severities' },
   { value: 'medium', label: 'Medium+' },
   { value: 'high', label: 'High only' },
+  { value: 'critical', label: 'Critical only' },
 ]
-const alertCategoryOptions = ['all', 'Legislation', 'Congressional Trades', 'State Policy', 'Infrastructure']
+const alertCategoryOptions = [
+  { value: 'all', label: 'All categories' },
+  { value: 'Legislation', label: 'Legislation' },
+  { value: 'Congressional Trades', label: 'Congressional Trades' },
+  { value: 'State Policy', label: 'State Policy' },
+  { value: 'Infrastructure', label: 'Infrastructure' },
+]
 
-export function DashboardPage() {
-  const { fetchResource, peek } = useApiCache()
-  const [dashboard, setDashboard] = useState(fallbackDashboard)
-  const [status, setStatus] = useState('idle')
-  const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({
-    sector: 'Technology',
-    horizon: 30,
+const defaultFilters = () => {
+  const opportunityPrefs = fallbackDashboard.opportunityPreferences ?? {}
+  const alertPrefs = fallbackDashboard.alertPreferences ?? {}
+
+  return {
+    sector: fallbackDashboard.sectorForecast?.sector ?? 'Technology',
+    horizon: fallbackDashboard.sectorForecast?.horizonDays ?? 30,
     legislationLimit: 6,
     opportunityLimit: 6,
     conflictLimit: 4,
-    alertSeverity: 'all',
-    alertCategory: 'all',
-  })
-  const [drawerDetail, setDrawerDetail] = useState(null)
+    alertSeverity: alertPrefs.min_severity ?? 'all',
+    alertCategory: alertPrefs.categories?.[0] ?? 'all',
+    riskRatings: Array.isArray(opportunityPrefs.risk_ratings)
+      ? [...opportunityPrefs.risk_ratings]
+      : [],
+    minConviction: typeof opportunityPrefs.min_conviction === 'number'
+      ? opportunityPrefs.min_conviction
+      : 0.55,
+    maxHorizonDays: opportunityPrefs.max_horizon_days ?? 60,
+  }
+}
+
+export function DashboardPage() {
+  const { fetchResource, peek } = useApiCache()
+  const [dashboard, setDashboard] = useState(() => mapDashboard(fallbackDashboard))
+  const [status, setStatus] = useState('idle')
+  const [error, setError] = useState(null)
+  const [filters, setFilters] = useState(defaultFilters)
 
   useEffect(() => {
     let aborted = false
 
+    const alertParams = buildAlertParams(filters)
+    const opportunityParams = buildOpportunityParams(filters)
+
     const snapshotKey = 'dashboard-snapshot'
-    const alertsKey = `alerts-${filters.legislationLimit}-${filters.alertCategory}-${filters.alertSeverity}`
-    const opportunitiesKey = `opportunities-${filters.opportunityLimit}`
+    const alertsKey = `alerts-${filters.alertSeverity}-${filters.alertCategory}`
+    const opportunitiesKey = `opportunities-${filters.opportunityLimit}-${filters.riskRatings
+      .slice()
+      .sort()
+      .join('.')}-${filters.minConviction}-${filters.maxHorizonDays ?? 'any'}`
     const legislationKey = `legislation-${filters.legislationLimit}`
     const forecastKey = `forecast-${filters.sector}-${filters.horizon}`
-    const conflictsKey = `portfolio-conflicts-${filters.conflictLimit}`
+    const conflictsKey = `conflicts-${filters.conflictLimit}`
 
     const cached = composeDashboard({
       snapshot: peek(snapshotKey),
@@ -73,17 +100,23 @@ export function DashboardPage() {
           conflictsPayload,
         ] = await Promise.all([
           fetchResource(snapshotKey, api.fetchDashboardSnapshot).catch(() => null),
-          fetchResource(alertsKey, () => api.fetchAlerts(alertParams)).catch(() => null),
-          fetchResource(opportunitiesKey, () => api.fetchOpportunities({ limit: filters.opportunityLimit })).catch(() => null),
-          fetchResource(legislationKey, () => api.fetchLegislation({ limit: filters.legislationLimit })).catch(() => null),
+          fetchResource(alertsKey, () => api.fetchAlerts({ ...alertParams, limit: 4 })).catch(() => null),
+          fetchResource(opportunitiesKey, () =>
+            api.fetchOpportunities({ ...opportunityParams, limit: filters.opportunityLimit }),
+          ).catch(() => null),
+          fetchResource(legislationKey, () => api.fetchLegislation({ limit: filters.legislationLimit })).catch(
+            () => null,
+          ),
           fetchResource(forecastKey, () =>
             api.fetchForecast({ sector: filters.sector, horizon_days: filters.horizon }),
           ).catch(() => null),
-          fetchResource(conflictsKey, () => api.fetchPortfolioConflicts({ limit: filters.conflictLimit })).catch(() => null),
+          fetchResource(conflictsKey, () => api.fetchPortfolioConflicts({ limit: filters.conflictLimit })).catch(
+            () => null,
+          ),
         ])
 
         if (aborted) return
-        setDashboard(
+        setDashboard((current) =>
           composeDashboard({
             snapshot,
             alertsPayload,
@@ -91,7 +124,7 @@ export function DashboardPage() {
             legislationPayload,
             forecastPayload,
             conflictsPayload,
-            fallback: dashboard,
+            fallback: current,
             filters,
           }),
         )
@@ -102,7 +135,7 @@ export function DashboardPage() {
         setStatus(cached === dashboard ? 'error' : 'success')
         setError(err.message)
         if (cached === dashboard) {
-          setDashboard(fallbackDashboard)
+          setDashboard(mapDashboard(fallbackDashboard))
         }
       }
     })()
@@ -110,33 +143,54 @@ export function DashboardPage() {
     return () => {
       aborted = true
     }
-  }, [fetchResource, peek, filters.horizon, filters.legislationLimit, filters.opportunityLimit, filters.conflictLimit, filters.alertSeverity, filters.alertCategory, filters.sector])
+  }, [fetchResource, peek, filters])
 
   const legislationRows = useMemo(
     () => dashboard.upcomingLegislation.slice(0, filters.legislationLimit),
     [dashboard.upcomingLegislation, filters.legislationLimit],
   )
 
-  const openDrawer = (type, data) => setDrawerDetail({ type, data })
-  const closeDrawer = () => setDrawerDetail(null)
+  const toggleRiskRating = (value) => {
+    setFilters((prev) => {
+      const next = prev.riskRatings.includes(value)
+        ? prev.riskRatings.filter((item) => item !== value)
+        : [...prev.riskRatings, value]
+      return { ...prev, riskRatings: next.sort() }
+    })
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-16 px-6 pb-24 pt-16">
-      <section className="space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Investor cockpit</p>
-            <h1 className="text-3xl font-semibold text-white">Live signals from policy to portfolio</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300">
-            <label className="flex items-center gap-2">
-              Sector
+      {status === 'loading' || status === 'refresh' ? (
+        <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary">
+          Synchronizing live policy intelligence...
+        </div>
+      ) : null}
+      {status === 'error' ? (
+        <div className="rounded-xl border border-red-500/50 bg-red-600/10 px-4 py-2 text-sm text-red-300">
+          Unable to reach the API. Showing fallback data. {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-8 lg:grid-cols-[1.2fr,1fr]">
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Investor cockpit</p>
+          <h1 className="text-3xl font-semibold text-white sm:text-4xl">
+            Live signals from policy momentum to portfolio action
+          </h1>
+          <p className="text-sm text-slate-300">
+            Adjust horizon, risk appetite, and alert focus to tune LegalEdge recommendations. Data refreshes
+            automatically when filters change.
+          </p>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-card-bg/60 p-6 text-sm text-slate-200">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Sector focus</span>
               <select
-                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-primary focus:outline-none"
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-primary focus:outline-none"
                 value={filters.sector}
-                onChange={(event) =>
-                  setFilters((prev) => ({ ...prev, sector: event.target.value }))
-                }
+                onChange={(event) => setFilters((prev) => ({ ...prev, sector: event.target.value }))}
               >
                 {sectors.map((sector) => (
                   <option key={sector} value={sector}>
@@ -145,10 +199,10 @@ export function DashboardPage() {
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2">
-              Horizon
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Forecast horizon</span>
               <select
-                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100 focus:border-primary focus:outline-none"
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-primary focus:outline-none"
                 value={filters.horizon}
                 onChange={(event) =>
                   setFilters((prev) => ({ ...prev, horizon: Number(event.target.value) }))
@@ -161,245 +215,213 @@ export function DashboardPage() {
                 ))}
               </select>
             </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Min conviction</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round((filters.minConviction ?? 0) * 100)}
+                  onChange={(event) =>
+                    setFilters((prev) => ({ ...prev, minConviction: Number(event.target.value) / 100 }))
+                  }
+                  className="flex-1"
+                />
+                <span className="w-16 text-sm text-slate-200">
+                  {Math.round((filters.minConviction ?? 0) * 100)}%
+                </span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Max horizon (days)</span>
+              <input
+                type="number"
+                min={15}
+                max={180}
+                value={filters.maxHorizonDays ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setFilters((prev) => ({
+                    ...prev,
+                    maxHorizonDays: value === '' ? null : Number(value),
+                  }))
+                }}
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-primary focus:outline-none"
+              />
+            </label>
           </div>
         </div>
-        {status === 'loading' || status === 'refresh' ? (
-          <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary">
-            Syncing dashboard data...
-          </div>
-        ) : null}
-        {status === 'error' ? (
-          <div className="rounded-xl border border-red-500/50 bg-red-600/10 px-4 py-2 text-sm text-red-300">
-            Unable to reach the API. Showing fallback data. {error}
-          </div>
-        ) : null}
       </section>
 
-      <section>
-        <div className="flex items-center justify-between gap-6">
-          <h2 className="text-2xl font-semibold text-white">Active alerts</h2>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-primary"
-            onClick={() => setFilters((prev) => ({ ...prev, legislationLimit: prev.legislationLimit + 2 }))}
-          >
-            Load more
-          </button>
+      <section className="rounded-3xl border border-slate-800 bg-card-bg/60 p-6 text-sm text-slate-200">
+        <div className="grid gap-6 lg:grid-cols-[1fr,1fr]">
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-white">Alert controls</h2>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Minimum severity</span>
+              <select
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-primary focus:outline-none"
+                value={filters.alertSeverity}
+                onChange={(event) => setFilters((prev) => ({ ...prev, alertSeverity: event.target.value }))}
+              >
+                {alertSeverityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Category focus</span>
+              <select
+                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-primary focus:outline-none"
+                value={filters.alertCategory}
+                onChange={(event) => setFilters((prev) => ({ ...prev, alertCategory: event.target.value }))}
+              >
+                {alertCategoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-white">Opportunity risk bands</h2>
+            <div className="flex flex-wrap gap-2">
+              {riskRatingOptions.map((rating) => {
+                const active = filters.riskRatings.includes(rating)
+                return (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() => toggleRiskRating(rating)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      active
+                        ? 'border-primary bg-primary/20 text-primary'
+                        : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-primary/60 hover:text-primary'
+                    }`}
+                  >
+                    {rating}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {dashboard.alerts.map((alert) => (
-            <button key={alert.id} type="button" onClick={() => openDrawer('alert', alert)} className="text-left">
-              <AlertBanner {...alert} />
-            </button>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-semibold text-white">Real-time alerts</h2>
+          <span className="text-xs text-slate-500">{formatAlertFilters(dashboard.alertFilters)}</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {dashboard.alerts.length ? (
+            dashboard.alerts.slice(0, 4).map((alert) => <AlertBanner key={alert.id} {...alert} />)
+          ) : (
+            <p className="text-sm text-slate-400">No alerts match the current filters.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-semibold text-white">Upcoming legislation</h2>
+          <span className="text-xs text-slate-500">
+            {dashboard.upcomingLegislation.length} bills tracked
+          </span>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {legislationRows.map((bill) => (
+            <LegislationCard key={bill.billId} {...bill} />
           ))}
         </div>
       </section>
 
-      <section>
-        <h2 className="text-2xl font-semibold text-white">Upcoming legislation</h2>
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-card-bg/60">
-          <table className="w-full text-left text-sm text-slate-200">
-            <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Bill</th>
-                <th className="px-4 py-3">Stage</th>
-                <th className="px-4 py-3">Jurisdiction</th>
-                <th className="px-4 py-3">Next action</th>
-                <th className="px-4 py-3 text-right">Sentiment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {legislationRows.map((bill) => (
-                <tr
-                  key={bill.billId}
-                  className="cursor-pointer border-t border-slate-800/80 transition hover:bg-slate-900/60"
-                  onClick={() => openDrawer('bill', bill)}
-                >
-                  <td className="px-4 py-3 font-semibold text-white">
-                    <div>{bill.title}</div>
-                    <p className="text-xs text-slate-400">{bill.billId}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-300">{bill.stage}</td>
-                  <td className="px-4 py-3 text-slate-300">{bill.jurisdiction}</td>
-                  <td className="px-4 py-3 text-slate-300">{formatDate(bill.nextActionDate)}</td>
-                  <td className="px-4 py-3 text-right text-slate-300">{formatPercent(bill.sentimentScore)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <section className="grid gap-8 lg:grid-cols-[1fr,1.2fr]">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-semibold text-white">Sector forecast</h2>
+            <span className="text-xs text-slate-500">
+              {dashboard.sectorForecast.generatedOn
+                ? `Generated ${new Date(dashboard.sectorForecast.generatedOn).toLocaleDateString('en-US')}`
+                : 'Pending'}
+            </span>
+          </div>
+          <div className="space-y-4">
+            {dashboard.sectorForecast.signals.length ? (
+              dashboard.sectorForecast.signals.map((signal) => (
+                <ForecastSignalCard key={signal.ticker} {...signal} />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">No forecast signals available.</p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-semibold text-white">Market opportunities</h2>
+            <span className="text-xs text-slate-500">{formatOpportunityFilters(dashboard.opportunityFilters)}</span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {dashboard.opportunities.length ? (
+              dashboard.opportunities.slice(0, filters.opportunityLimit).map((item) => (
+                <OpportunityCard key={item.ticker} {...item} />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">No opportunities match the selected filters.</p>
+            )}
+          </div>
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between gap-6">
-          <h2 className="text-2xl font-semibold text-white">Market opportunity engine</h2>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-primary"
-            onClick={() =>
-              setFilters((prev) => ({ ...prev, opportunityLimit: Math.min(prev.opportunityLimit + 2, 12) }))
-            }
-          >
-            Expand
-          </button>
-        </div>
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-card-bg/60">
-          <table className="w-full text-left text-sm text-slate-200">
-            <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Ticker</th>
-                <th className="px-4 py-3">Thesis</th>
-                <th className="px-4 py-3">Exp. return</th>
-                <th className="px-4 py-3">Conviction</th>
-                <th className="px-4 py-3">Risk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboard.opportunities.slice(0, filters.opportunityLimit).map((opportunity) => (
-                <tr
-                  key={opportunity.ticker}
-                  className="cursor-pointer border-t border-slate-800/80 transition hover:bg-slate-900/60"
-                  onClick={() => openDrawer('opportunity', opportunity)}
-                >
-                  <td className="px-4 py-3 font-semibold text-white">{opportunity.ticker}</td>
-                  <td className="px-4 py-3 text-slate-300">{opportunity.thesis}</td>
-                  <td className="px-4 py-3 text-slate-300">{formatPercent(opportunity.expectedReturnPct)}</td>
-                  <td className="px-4 py-3 text-slate-300">{formatPercent(opportunity.conviction)}</td>
-                  <td className="px-4 py-3 text-slate-300 capitalize">{opportunity.riskRating}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-2xl font-semibold text-white">Forecast spotlight</h2>
-        <p className="mt-2 text-sm text-slate-400">
-          {dashboard.sectorForecast.sector} sector · {dashboard.sectorForecast.horizonDays}-day horizon
-        </p>
-        <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {dashboard.sectorForecast.signals.map((signal) => (
-            <ForecastSignalCard key={`${signal.ticker}-${signal.thesis}`} {...signal} />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-2xl font-semibold text-white">Portfolio intelligence</h2>
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-white">Congressional portfolio signals</h2>
+        <div className="grid gap-4 md:grid-cols-2">
           {dashboard.portfolioSignals.map((signal) => (
             <PortfolioSignalCard key={signal.ticker} {...signal} />
           ))}
         </div>
       </section>
 
-      <section>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-white">Conflict watchlist</h2>
-            <p className="text-sm text-slate-400">
-              Flags congressional trades that intersect with legislation momentum.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          {dashboard.conflictRisks.map((conflict) => (
-            <ConflictRiskCard
-              key={`${conflict.ticker}-${conflict.member}-${conflict.transactionDate}`}
-              {...conflict}
-            />
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-white">Potential conflict hotspots</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          {dashboard.conflictRisks.slice(0, filters.conflictLimit).map((conflict) => (
+            <ConflictRiskCard key={`${conflict.ticker}-${conflict.member}`} {...conflict} />
           ))}
         </div>
       </section>
-
-      <DetailDrawer open={Boolean(drawerDetail)} title={drawerTitle(drawerDetail)} onClose={closeDrawer}>
-        {drawerDetail?.type === 'alert' ? <AlertDetail alert={drawerDetail.data} /> : null}
-        {drawerDetail?.type === 'bill' ? <BillDetail bill={drawerDetail.data} /> : null}
-        {drawerDetail?.type === 'opportunity' ? <OpportunityDetail opportunity={drawerDetail.data} /> : null}
-      </DetailDrawer>
     </div>
   )
 }
 
-function AlertDetail({ alert }) {
-  return (
-    <div className="space-y-3 text-sm text-slate-200">
-      <p className="text-xs uppercase tracking-wide text-slate-400">{alert.category}</p>
-      <p className="text-sm text-slate-300">{alert.description}</p>
-      <DetailList label="Severity" value={alert.severity} />
-      {alert.relatedEntities?.length ? (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Related entities</p>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-200">
-            {alert.relatedEntities.map((entity) => (
-              <span key={entity} className="rounded-full border border-slate-700 px-3 py-1">
-                {entity}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      <p className="text-xs text-slate-400">Generated {formatDate(alert.createdAt)}</p>
-    </div>
-  )
+function buildAlertParams(filters) {
+  const params = {}
+  if (filters.alertSeverity && filters.alertSeverity !== 'all') {
+    params.min_severity = filters.alertSeverity
+  }
+  if (filters.alertCategory && filters.alertCategory !== 'all') {
+    params.categories = [filters.alertCategory]
+  }
+  return params
 }
 
-function BillDetail({ bill }) {
-  return (
-    <div className="space-y-3 text-sm text-slate-200">
-      <p className="text-xs uppercase tracking-wide text-slate-400">{bill.billId}</p>
-      <p className="text-sm text-slate-300">{bill.summary}</p>
-      <DetailList label="Stage" value={bill.stage} />
-      <DetailList label="Jurisdiction" value={bill.jurisdiction} />
-      <DetailList label="Next action" value={formatDate(bill.nextActionDate)} />
-      <DetailList label="Committees" value={(bill.committees ?? []).join(', ') || 'N/A'} />
-      <DetailList label="Sectors" value={(bill.sectors ?? []).join(', ') || 'N/A'} />
-      <DetailList label="Sentiment" value={formatPercent(bill.sentimentScore)} />
-      <DetailList label="Probability" value={formatPercent(bill.probabilityOfEnactment)} />
-    </div>
-  )
-}
-
-function OpportunityDetail({ opportunity }) {
-  return (
-    <div className="space-y-3 text-sm text-slate-200">
-      <p className="text-xs uppercase tracking-wide text-slate-400">Ticker</p>
-      <p className="text-lg font-semibold text-white">{opportunity.ticker}</p>
-      <p className="text-sm text-slate-300">{opportunity.thesis}</p>
-      <DetailList label="Expected return" value={formatPercent(opportunity.expectedReturnPct)} />
-      <DetailList label="Conviction" value={formatPercent(opportunity.conviction)} />
-      <DetailList label="Horizon" value={`${opportunity.horizonDays} days`} />
-      <DetailList label="Risk" value={opportunity.riskRating} />
-      {opportunity.catalysts?.length ? (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Catalysts</p>
-          <ul className="mt-1 space-y-1 text-sm text-slate-200">
-            {opportunity.catalysts.map((catalyst) => (
-              <li key={catalyst}>• {catalyst}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function DetailList({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-sm text-slate-200">{value || 'N/A'}</p>
-    </div>
-  )
-}
-
-function drawerTitle(detail) {
-  if (!detail) return ''
-  if (detail.type === 'alert') return 'Policy alert detail'
-  if (detail.type === 'bill') return detail.data.title
-  if (detail.type === 'opportunity') return `Opportunity – ${detail.data.ticker}`
-  return ''
+function buildOpportunityParams(filters) {
+  const params = {}
+  if (filters.riskRatings?.length) {
+    params.risk_ratings = filters.riskRatings
+  }
+  if (typeof filters.minConviction === 'number' && filters.minConviction > 0) {
+    params.min_conviction = Number(filters.minConviction.toFixed(2))
+  }
+  if (filters.maxHorizonDays) {
+    params.max_horizon_days = filters.maxHorizonDays
+  }
+  return params
 }
 
 function composeDashboard({
@@ -412,82 +434,99 @@ function composeDashboard({
   fallback,
   filters,
 }) {
-  const base = fallback ?? fallbackDashboard
-  const result = {
-    upcomingLegislation: base.upcomingLegislation ?? fallbackDashboard.upcomingLegislation,
-    sectorForecast: base.sectorForecast ?? fallbackDashboard.sectorForecast,
-    portfolioSignals: base.portfolioSignals ?? fallbackDashboard.portfolioSignals,
-    conflictRisks: base.conflictRisks ?? fallbackDashboard.conflictRisks,
-    alerts: base.alerts ?? fallbackDashboard.alerts,
-    opportunities: base.opportunities ?? fallbackDashboard.opportunities,
-    alertPreferences: base.alertPreferences ?? null,
+  const base = fallback ?? mapDashboard(fallbackDashboard)
+  const next = {
+    upcomingLegislation: base.upcomingLegislation,
+    sectorForecast: base.sectorForecast,
+    portfolioSignals: base.portfolioSignals,
+    conflictRisks: base.conflictRisks,
+    alerts: base.alerts,
+    opportunities: base.opportunities,
+    alertFilters: base.alertFilters,
+    opportunityFilters: base.opportunityFilters,
   }
+
+  let changed = false
 
   if (snapshot?.upcoming_legislation?.length) {
-    result.upcomingLegislation = snapshot.upcoming_legislation.map(mapBill)
+    next.upcomingLegislation = snapshot.upcoming_legislation.map(mapBill)
+    changed = true
   } else if (Array.isArray(legislationPayload) && legislationPayload.length) {
-    result.upcomingLegislation = legislationPayload.map(mapBill)
-  }
-
-  if (snapshot?.portfolio_signals?.length) {
-    result.portfolioSignals = snapshot.portfolio_signals.map(mapPortfolioSignal)
-  }
-
-  if (snapshot?.portfolio_conflicts?.length) {
-    result.conflictRisks = snapshot.portfolio_conflicts.map(mapConflict)
-  } else if (Array.isArray(conflictsPayload) && conflictsPayload.length) {
-    result.conflictRisks = conflictsPayload.map(mapConflict)
-  }
-
-  if (snapshot?.alert_preferences) {
-    result.alertPreferences = snapshot.alert_preferences
-  }
-
-  if (alertsPayload?.alerts?.length) {
-    result.alerts = alertsPayload.alerts.map(mapAlert)
-  }
-
-  if (alertsPayload?.applied_filters) {
-    result.alertPreferences = alertsPayload.applied_filters
-  }
-
-  if (!result.alertPreferences) {
-    const manualFilters = {}
-    if (filters.alertSeverity !== 'all') {
-      manualFilters.min_severity = filters.alertSeverity
-    }
-    if (filters.alertCategory !== 'all') {
-      manualFilters.categories = [filters.alertCategory]
-    }
-    if (Object.keys(manualFilters).length) {
-      result.alertPreferences = manualFilters
-    }
-  }
-
-  if (opportunitiesPayload?.opportunities?.length) {
-    result.opportunities = opportunitiesPayload.opportunities.map(mapOpportunity)
+    next.upcomingLegislation = legislationPayload.map(mapBill)
+    changed = true
   }
 
   const forecastSource = forecastPayload ?? snapshot?.sector_forecast
   if (forecastSource) {
-    result.sectorForecast = {
+    next.sectorForecast = {
       sector: forecastSource.sector ?? filters.sector,
-      horizonDays: forecastSource.horizon_days ?? filters.horizon,
+      horizonDays: forecastSource.horizon_days ?? forecastSource.horizonDays ?? filters.horizon,
       generatedOn: forecastSource.generated_on ?? forecastSource.generatedOn ?? new Date().toISOString(),
       signals: (forecastSource.signals ?? []).map(mapForecastSignal),
     }
-  } else {
-    result.sectorForecast = {
-      ...result.sectorForecast,
-      sector: filters.sector,
-      horizonDays: filters.horizon,
+    changed = true
+  }
+
+  if (snapshot?.portfolio_signals?.length) {
+    next.portfolioSignals = snapshot.portfolio_signals.map(mapPortfolioSignal)
+    changed = true
+  }
+
+  if (Array.isArray(conflictsPayload) && conflictsPayload.length) {
+    next.conflictRisks = conflictsPayload.map(mapConflict)
+    changed = true
+  }
+
+  if (alertsPayload?.alerts?.length) {
+    next.alerts = alertsPayload.alerts.map(mapAlert)
+    next.alertFilters = alertsPayload.applied_filters ?? next.alertFilters
+    changed = true
+  }
+
+  if (opportunitiesPayload?.opportunities?.length) {
+    next.opportunities = opportunitiesPayload.opportunities.map(mapOpportunity)
+    next.opportunityFilters = opportunitiesPayload.applied_filters ?? next.opportunityFilters
+    changed = true
+  }
+
+  return changed ? next : base
+}
+
+function mapDashboard(payload) {
+  if (!payload) {
+    return {
+      upcomingLegislation: [],
+      sectorForecast: { sector: 'Technology', horizonDays: 30, generatedOn: new Date().toISOString(), signals: [] },
+      portfolioSignals: [],
+      conflictRisks: [],
+      alerts: [],
+      opportunities: [],
+      alertFilters: null,
+      opportunityFilters: null,
     }
   }
 
-  return result
+  return {
+    upcomingLegislation: (payload.upcomingLegislation ?? payload.upcoming_legislation ?? []).map(mapBill),
+    sectorForecast: payload.sectorForecast ?? payload.sector_forecast ?? {
+      sector: 'Technology',
+      horizonDays: 30,
+      generatedOn: new Date().toISOString(),
+      signals: [],
+    },
+    portfolioSignals: (payload.portfolioSignals ?? payload.portfolio_signals ?? []).map(mapPortfolioSignal),
+    conflictRisks: (payload.conflictRisks ?? payload.conflict_risks ?? []).map(mapConflict),
+    alerts: (payload.alerts ?? []).map(mapAlert),
+    opportunities: (payload.opportunities ?? []).map(mapOpportunity),
+    alertFilters:
+      payload.alertFilters ?? payload.alert_preferences ?? payload.alertPreferences ?? null,
+    opportunityFilters:
+      payload.opportunityFilters ?? payload.opportunity_preferences ?? payload.opportunityPreferences ?? null,
+  }
 }
 
 function mapBill(bill) {
+  if (!bill) return null
   return {
     billId: bill.bill_id ?? bill.billId,
     title: bill.title,
@@ -497,8 +536,6 @@ function mapBill(bill) {
     nextActionDate: bill.next_action_date ?? bill.nextActionDate,
     sentimentScore: bill.sentiment_score ?? bill.sentimentScore,
     probabilityOfEnactment: bill.probability_of_enactment ?? bill.probabilityOfEnactment,
-    committees: bill.committees ?? [],
-    sectors: bill.sectors ?? [],
   }
 }
 
@@ -538,7 +575,6 @@ function mapConflict(conflict) {
     transactionType: conflict.transaction_type ?? conflict.transactionType,
     transactionDate: conflict.transaction_date ?? conflict.transactionDate,
     amountRange: conflict.amount_range ?? conflict.amountRange,
-    billId: conflict.bill_id ?? conflict.billId ?? null,
     billTitle: conflict.bill_title ?? conflict.billTitle ?? 'Associated legislation pending',
     billStage: conflict.bill_stage ?? conflict.billStage ?? 'Pending',
     jurisdiction: conflict.jurisdiction ?? 'Federal',
@@ -561,24 +597,6 @@ function mapAlert(alert) {
   }
 }
 
-function formatAlertFilters(preferences) {
-  if (!preferences) return ''
-  const parts = []
-  if (preferences.min_severity) {
-    parts.push(`Min severity ${preferences.min_severity}`)
-  }
-  if (Array.isArray(preferences.categories) && preferences.categories.length) {
-    parts.push(`Categories: ${preferences.categories.join(', ')}`)
-  }
-  if (preferences.entity) {
-    parts.push(`Entity ${preferences.entity}`)
-  }
-  if (preferences.since_minutes) {
-    parts.push(`Last ${preferences.since_minutes} min`)
-  }
-  return parts.join(' · ')
-}
-
 function mapOpportunity(item) {
   return {
     ticker: item.ticker,
@@ -591,33 +609,34 @@ function mapOpportunity(item) {
   }
 }
 
-function formatPercent(value) {
-  if (value === null || value === undefined) {
-    return '–'
+function formatOpportunityFilters(filters) {
+  if (!filters) return 'No filters applied'
+  const items = []
+  const risk = filters.risk_ratings ?? filters.riskRatings
+  if (Array.isArray(risk) && risk.length) {
+    items.push('Risk: ' + risk.join(', '))
   }
-  const numeric = Number(value)
-  if (Number.isNaN(numeric)) return '–'
-  const scaled = Math.abs(numeric) <= 1 ? numeric * 100 : numeric
-  return `${scaled.toFixed(1)}%`
+  const minConviction = filters.min_conviction ?? filters.minConviction
+  if (typeof minConviction === 'number') {
+    items.push('Min conviction: ' + Math.round(minConviction * 100) + '%')
+  }
+  const horizon = filters.max_horizon_days ?? filters.maxHorizonDays
+  if (typeof horizon === 'number') {
+    items.push('Horizon <= ' + horizon + 'd')
+  }
+  return items.length ? items.join(' | ') : 'No filters applied'
 }
 
-function formatDate(value) {
-  if (!value) return 'TBD'
-  const dateValue = new Date(value)
-  if (Number.isNaN(dateValue.valueOf())) return 'TBD'
-  return dateValue.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+function formatAlertFilters(filters) {
+  if (!filters) return 'No alert filters applied'
+  const parts = []
+  const minSeverity = filters.min_severity ?? filters.minSeverity
+  if (minSeverity) {
+    parts.push(`Min severity ${minSeverity}`)
+  }
+  const categories = filters.categories
+  if (Array.isArray(categories) && categories.length) {
+    parts.push(`Categories: ${categories.join(', ')}`)
+  }
+  return parts.length ? parts.join(' | ') : 'No alert filters applied'
 }
-
-
-
-
-
-
-
-
-
-

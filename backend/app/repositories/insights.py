@@ -20,11 +20,17 @@ async def list_alerts(
     stmt = select(PolicyAlert)
 
     if categories:
-        stmt = stmt.where(func.lower(PolicyAlert.category).in_(categories))
+        lowered = [value.lower() for value in categories if value]
+        if lowered:
+            stmt = stmt.where(func.lower(PolicyAlert.category).in_(lowered))
     if severities:
-        stmt = stmt.where(func.lower(PolicyAlert.severity).in_(severities))
+        lowered = [value.lower() for value in severities if value]
+        if lowered:
+            stmt = stmt.where(func.lower(PolicyAlert.severity).in_(lowered))
     elif allowed_severities:
-        stmt = stmt.where(func.lower(PolicyAlert.severity).in_(allowed_severities))
+        lowered = [value.lower() for value in allowed_severities if value]
+        if lowered:
+            stmt = stmt.where(func.lower(PolicyAlert.severity).in_(lowered))
     if entity:
         stmt = stmt.where(PolicyAlert.related_entities.contains([entity]))
     if since is not None:
@@ -35,12 +41,25 @@ async def list_alerts(
     return list(result.scalars().all())
 
 
-async def list_opportunities(session: AsyncSession, *, limit: int = 5) -> list[OpportunityRecommendation]:
-    stmt = (
-        select(OpportunityRecommendation)
-        .order_by(OpportunityRecommendation.updated_at.desc())
-        .limit(limit)
-    )
+async def list_opportunities(
+    session: AsyncSession,
+    *,
+    limit: int = 5,
+    risk_ratings: list[str] | None = None,
+    min_conviction: float | None = None,
+    max_horizon_days: int | None = None,
+) -> list[OpportunityRecommendation]:
+    stmt = select(OpportunityRecommendation)
+
+    if risk_ratings:
+        lowered = [value.lower() for value in risk_ratings if value]
+        if lowered:
+            stmt = stmt.where(func.lower(OpportunityRecommendation.risk_rating).in_(lowered))
+    if min_conviction is not None:
+        stmt = stmt.where(OpportunityRecommendation.conviction >= min_conviction)
+    if max_horizon_days is not None:
+        stmt = stmt.where(OpportunityRecommendation.horizon_days <= max_horizon_days)
+
+    stmt = stmt.order_by(OpportunityRecommendation.updated_at.desc()).limit(limit)
     result = await session.execute(stmt)
     return list(result.scalars().all())
-

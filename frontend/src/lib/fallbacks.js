@@ -184,7 +184,10 @@ export const fallbackDashboard = {
       riskRating: 'balanced',
     },
   ],
-}\n\nexport const fallbackCoverage = {
+  opportunityPreferences: { risk_ratings: ['medium', 'balanced'], min_conviction: 0.6, max_horizon_days: 60 },
+}
+
+export const fallbackCoverage = {
   generatedAt: new Date().toISOString(),
   jurisdictions: [
     {

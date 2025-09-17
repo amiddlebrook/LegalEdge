@@ -1,5 +1,6 @@
 """Market opportunity schemas."""
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -21,3 +22,4 @@ class OpportunityPayload(BaseModel):
 
     generated_at: datetime
     opportunities: list[OpportunityRecommendation]
+    applied_filters: dict[str, Any] | None = None

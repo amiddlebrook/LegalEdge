@@ -4,7 +4,11 @@ const buildQuery = (params = {}) => {
   const searchParams = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === '') continue
-    searchParams.append(key, value)
+    if (Array.isArray(value)) {
+      value.forEach((entry) => searchParams.append(key, entry))
+    } else {
+      searchParams.append(key, value)
+    }
   }
   const query = searchParams.toString()
   return query ? `?${query}` : ''
