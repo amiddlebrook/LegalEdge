@@ -4,6 +4,7 @@ from collections.abc import Callable
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.ml.forecaster import get_forecaster
 from app.ml.legislation_pipeline import get_pipeline
 from app.schemas.legislation import BillImpactRequest
 from app.services.forecasting import build_sector_forecast
@@ -75,3 +76,10 @@ async def retrain_legislation_models() -> None:
 
     pipeline = get_pipeline()
     await pipeline.retrain()
+
+
+async def retrain_forecasting_models() -> None:
+    """Trigger scheduled retraining of forecasting artifacts."""
+
+    forecaster = get_forecaster()
+    await forecaster.retrain()

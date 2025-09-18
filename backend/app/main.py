@@ -11,7 +11,11 @@ from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.tasks import RecurringTaskManager
 from app.db.session import SessionLocal
-from app.workflows.pipeline import retrain_legislation_models, run_daily_ingestion
+from app.workflows.pipeline import (
+    retrain_forecasting_models,
+    retrain_legislation_models,
+    run_daily_ingestion,
+)
 
 
 def create_application() -> FastAPI:
@@ -25,12 +29,17 @@ def create_application() -> FastAPI:
         interval_minutes=settings.ingestion_schedule_minutes,
         run_immediately=True,
     )
-    retraining_manager = RecurringTaskManager(
+    legislation_retrain_manager = RecurringTaskManager(
         retrain_legislation_models,
         interval_minutes=settings.model_retrain_schedule_minutes,
         run_immediately=False,
     )
-    managers = [ingestion_manager, retraining_manager]
+    forecasting_retrain_manager = RecurringTaskManager(
+        retrain_forecasting_models,
+        interval_minutes=settings.forecast_retrain_schedule_minutes,
+        run_immediately=False,
+    )
+    managers = [ingestion_manager, forecasting_retrain_manager, legislation_retrain_manager]
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

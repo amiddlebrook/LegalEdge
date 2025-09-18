@@ -458,10 +458,16 @@ function composeDashboard({
 
   const forecastSource = forecastPayload ?? snapshot?.sector_forecast
   if (forecastSource) {
+    const estimatedAccuracy = forecastSource.estimated_accuracy ?? forecastSource.estimatedAccuracy ?? 0.72;
+    const methodologySummary = forecastSource.methodology_summary ?? forecastSource.methodologySummary ?? 'Hybrid policy sentiment and price momentum baseline.';
+    const drivers = forecastSource.drivers ?? [];
     next.sectorForecast = {
       sector: forecastSource.sector ?? filters.sector,
       horizonDays: forecastSource.horizon_days ?? forecastSource.horizonDays ?? filters.horizon,
       generatedOn: forecastSource.generated_on ?? forecastSource.generatedOn ?? new Date().toISOString(),
+      estimatedAccuracy,
+      methodologySummary,
+      drivers,
       signals: (forecastSource.signals ?? []).map(mapForecastSignal),
     }
     changed = true
@@ -496,7 +502,15 @@ function mapDashboard(payload) {
   if (!payload) {
     return {
       upcomingLegislation: [],
-      sectorForecast: { sector: 'Technology', horizonDays: 30, generatedOn: new Date().toISOString(), signals: [] },
+      sectorForecast: {
+        sector: 'Technology',
+        horizonDays: 30,
+        generatedOn: new Date().toISOString(),
+        estimatedAccuracy: 0.72,
+        methodologySummary: 'Hybrid policy sentiment and price momentum baseline.',
+        drivers: [],
+        signals: [],
+      },
       portfolioSignals: [],
       conflictRisks: [],
       alerts: [],
@@ -506,14 +520,23 @@ function mapDashboard(payload) {
     }
   }
 
+  const rawForecast = payload.sectorForecast ?? payload.sector_forecast ?? {}
+  const mappedForecast = {
+    sector: rawForecast.sector ?? 'Technology',
+    horizonDays: rawForecast.horizon_days ?? rawForecast.horizonDays ?? 30,
+    generatedOn: rawForecast.generated_on ?? rawForecast.generatedOn ?? new Date().toISOString(),
+    estimatedAccuracy:
+      rawForecast.estimated_accuracy ?? rawForecast.estimatedAccuracy ?? 0.72,
+    methodologySummary:
+      rawForecast.methodology_summary ?? rawForecast.methodologySummary ??
+      'Hybrid policy sentiment and price momentum baseline.',
+    drivers: rawForecast.drivers ?? [],
+    signals: (rawForecast.signals ?? []).map(mapForecastSignal),
+  }
+
   return {
     upcomingLegislation: (payload.upcomingLegislation ?? payload.upcoming_legislation ?? []).map(mapBill),
-    sectorForecast: payload.sectorForecast ?? payload.sector_forecast ?? {
-      sector: 'Technology',
-      horizonDays: 30,
-      generatedOn: new Date().toISOString(),
-      signals: [],
-    },
+    sectorForecast: mappedForecast,
     portfolioSignals: (payload.portfolioSignals ?? payload.portfolio_signals ?? []).map(mapPortfolioSignal),
     conflictRisks: (payload.conflictRisks ?? payload.conflict_risks ?? []).map(mapConflict),
     alerts: (payload.alerts ?? []).map(mapAlert),
@@ -640,3 +663,7 @@ function formatAlertFilters(filters) {
   }
   return parts.length ? parts.join(' | ') : 'No alert filters applied'
 }
+
+
+
+

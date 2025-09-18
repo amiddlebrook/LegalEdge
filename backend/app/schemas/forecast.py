@@ -1,7 +1,7 @@
 """Forecasting schema definitions."""
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ForecastBreakdown(BaseModel):
@@ -21,3 +21,6 @@ class ForecastEnvelope(BaseModel):
     horizon_days: int
     generated_on: date
     signals: list[ForecastBreakdown]
+    estimated_accuracy: float = Field(ge=0.0, le=1.0)
+    methodology_summary: str
+    drivers: list[str] | None = None

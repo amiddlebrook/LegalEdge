@@ -114,6 +114,9 @@ export const fallbackDashboard = {
         catalysts: ['Federal disclosure mandates', 'State AI audits'],
       },
     ],
+    estimatedAccuracy: 0.72,
+    methodologySummary: 'Hybrid policy sentiment and price momentum baseline.',
+    drivers: ['Pro-growth language', 'Momentum signals'],
   },
   portfolioSignals: [
     {
@@ -253,5 +256,6 @@ export const fallbackCoverage = {
     'Real-time news and RSS signals',
   ],
 }
+
 
 

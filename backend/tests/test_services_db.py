@@ -44,6 +44,10 @@ async def test_build_sector_forecast_prefers_database(session):
     envelope = await build_sector_forecast('Technology', session=session)
     assert envelope.sector == 'Technology'
     assert envelope.signals
+    assert 0.0 <= envelope.estimated_accuracy <= 1.0
+    assert envelope.methodology_summary
+    if envelope.drivers:
+        assert isinstance(envelope.drivers[0], str)
 
 
 @pytest.mark.anyio
@@ -142,3 +146,5 @@ async def test_export_conflicts_csv(session):
     csv_output = await export_conflicts_csv(session=session, limit=10)
     assert 'Ticker' in csv_output
     assert 'Risk Score' in csv_output
+
+

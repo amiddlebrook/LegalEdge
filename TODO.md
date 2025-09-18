@@ -9,7 +9,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## AI & Market Intelligence
 - [x] Deliver transformer-based NLP pipeline for bill sentiment, enactment probability, and sector impact scoring; automate retraining (hybrid pipeline with scheduled recalibration).
-- [ ] Develop time-series forecasting engine that blends policy signals with market data to reach the 70%+ accuracy target.
+- [x] Develop time-series forecasting engine that blends policy signals with market data to reach the 70%+ accuracy target (hybrid policy + momentum model with scheduled retraining).
 - [ ] Operationalize market opportunity ranking and conflict scoring using live data plus ML outputs with explainability.
 
 ## Portfolio & Alerts Experience
@@ -41,3 +41,4 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [ ] Expand automated tests (unit/integration/e2e), load tests for ingestion/alerts, and ML evaluation harnesses.
 - [ ] Produce client-facing documentation, onboarding flows, pricing/billing integration, and support playbooks.
 - [ ] Add feedback loops (in-app telemetry, surveys) and plan iterative release cadence post-launch.
+

@@ -5,10 +5,11 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.ml.forecaster import Forecaster
 from app.ml.legislation_pipeline import LegislationNlpPipeline
 from app.models import Base, LegislativeBill, LegislativeBillVersion
 from app.workflows import pipeline as workflows_pipeline
-from app.workflows.pipeline import retrain_legislation_models, run_daily_ingestion
+from app.workflows.pipeline import retrain_forecasting_models, retrain_legislation_models, run_daily_ingestion
 
 
 @pytest.fixture
@@ -77,3 +78,17 @@ async def test_retrain_legislation_models(monkeypatch):
     await retrain_legislation_models()
     assert pipeline._model_version == 'v1'
 
+
+@pytest.mark.anyio
+async def test_retrain_forecasting_models(monkeypatch):
+    forecaster = Forecaster()
+    called = {}
+
+    async def fake_retrain():
+        called['done'] = True
+
+    monkeypatch.setattr(forecaster, 'retrain', fake_retrain)
+    monkeypatch.setattr(workflows_pipeline, 'get_forecaster', lambda: forecaster)
+
+    await retrain_forecasting_models()
+    assert called['done'] is True
