@@ -197,6 +197,11 @@ export const fallbackDashboard = {
       explanation: 'Compliance catalysts propel upside despite moderate conflict risk.',
     },
   ],
+  opportunityMeta: {
+    rankerVersion: 'policy-momentum-1.0',
+    scoringNotes: 'Composite score = 55% policy alignment + 35% conviction + 10% baseline dampened by conflict risk.',
+    topDrivers: ['Federal AI procurement bill', 'SEC modernization tracker'],
+  },
   opportunityPreferences: { risk_ratings: ['medium', 'balanced'], min_conviction: 0.6, max_horizon_days: 60 },
 }
 

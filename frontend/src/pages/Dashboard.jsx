@@ -318,6 +318,24 @@ export function DashboardPage() {
           <h2 className="text-2xl font-semibold text-white">Real-time alerts</h2>
           <span className="text-xs text-slate-500">{formatAlertFilters(dashboard.alertFilters)}</span>
         </div>
+              {dashboard.opportunityMeta.scoringNotes ? (
+                <span className="text-slate-400">{dashboard.opportunityMeta.scoringNotes}</span>
+              ) : null}
+              {dashboard.opportunityMeta.topDrivers?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {dashboard.opportunityMeta.topDrivers.slice(0, 3).map((driver) => (
+                    <span
+                      key={driver}
+                      className="rounded-full border border-slate-700/60 px-2 py-0.5 text-slate-200"
+                    >
+                      {driver}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
         <div className="grid gap-4 md:grid-cols-2">
           {dashboard.alerts.length ? (
             dashboard.alerts.slice(0, 4).map((alert) => <AlertBanner key={alert.id} {...alert} />)
@@ -366,6 +384,34 @@ export function DashboardPage() {
             <h2 className="text-2xl font-semibold text-white">Market opportunities</h2>
             <span className="text-xs text-slate-500">{formatOpportunityFilters(dashboard.opportunityFilters)}</span>
           </div>
+          {(dashboard.opportunityMeta &&
+            (dashboard.opportunityMeta.rankerVersion ||
+              dashboard.opportunityMeta.scoringNotes ||
+              (dashboard.opportunityMeta.topDrivers?.length ?? 0) > 0)) ? (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              {dashboard.opportunityMeta.rankerVersion ? (
+                <span className="rounded-full border border-slate-700/60 bg-slate-800/60 px-2 py-0.5 text-slate-200">
+                  Ranker {dashboard.opportunityMeta.rankerVersion}
+                </span>
+              ) : null}
+              {dashboard.opportunityMeta.scoringNotes ? (
+                <span className="text-slate-400">{dashboard.opportunityMeta.scoringNotes}</span>
+              ) : null}
+              {dashboard.opportunityMeta.topDrivers?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {dashboard.opportunityMeta.topDrivers.slice(0, 3).map((driver) => (
+                    <span
+                      key={driver}
+                      className="rounded-full border border-slate-700/60 px-2 py-0.5 text-slate-200"
+                    >
+                      {driver}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-2">
             {dashboard.opportunities.length ? (
               dashboard.opportunities.slice(0, filters.opportunityLimit).map((item) => (
@@ -444,6 +490,7 @@ function composeDashboard({
     opportunities: base.opportunities,
     alertFilters: base.alertFilters,
     opportunityFilters: base.opportunityFilters,
+    opportunityMeta: base.opportunityMeta,
   }
 
   let changed = false
@@ -489,9 +536,32 @@ function composeDashboard({
     changed = true
   }
 
+  if (snapshot?.opportunity_metadata || snapshot?.opportunityMeta) {
+    next.opportunityMeta = mapOpportunityMeta(
+      snapshot.opportunity_metadata ?? snapshot.opportunityMeta,
+    )
+    changed = true
+  }
+
   if (opportunitiesPayload?.opportunities?.length) {
     next.opportunities = opportunitiesPayload.opportunities.map(mapOpportunity)
     next.opportunityFilters = opportunitiesPayload.applied_filters ?? next.opportunityFilters
+    changed = true
+  }
+
+  if (
+    opportunitiesPayload &&
+    (
+      opportunitiesPayload.ranker_version ||
+      opportunitiesPayload.scoring_notes ||
+      (opportunitiesPayload.top_drivers ?? []).length
+    )
+  ) {
+    next.opportunityMeta = mapOpportunityMeta({
+      ranker_version: opportunitiesPayload.ranker_version,
+      scoring_notes: opportunitiesPayload.scoring_notes,
+      top_drivers: opportunitiesPayload.top_drivers,
+    })
     changed = true
   }
 
@@ -517,6 +587,7 @@ function mapDashboard(payload) {
       opportunities: [],
       alertFilters: null,
       opportunityFilters: null,
+      opportunityMeta: mapOpportunityMeta(),
     }
   }
 
@@ -545,9 +616,14 @@ function mapDashboard(payload) {
       payload.alertFilters ?? payload.alert_preferences ?? payload.alertPreferences ?? null,
     opportunityFilters:
       payload.opportunityFilters ?? payload.opportunity_preferences ?? payload.opportunityPreferences ?? null,
+    opportunityMeta: mapOpportunityMeta(
+      payload.opportunityMeta ??
+        payload.opportunity_meta ??
+        payload.opportunityMetadata ??
+        null,
+    ),
   }
 }
-
 function mapBill(bill) {
   if (!bill) return null
   return {
@@ -639,6 +715,16 @@ function mapOpportunity(item) {
   }
 }
 
+function mapOpportunityMeta(meta) {
+  const source = meta ?? {}
+  const rawDrivers = source.topDrivers ?? source.top_drivers ?? []
+  return {
+    rankerVersion: source.rankerVersion ?? source.ranker_version ?? null,
+    scoringNotes: source.scoringNotes ?? source.scoring_notes ?? null,
+    topDrivers: Array.isArray(rawDrivers) ? [...rawDrivers] : [],
+  }
+}
+
 function formatOpportunityFilters(filters) {
   if (!filters) return 'No filters applied'
   const items = []
@@ -670,6 +756,7 @@ function formatAlertFilters(filters) {
   }
   return parts.length ? parts.join(' | ') : 'No alert filters applied'
 }
+
 
 
 
