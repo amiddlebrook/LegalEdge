@@ -546,7 +546,8 @@ async def detect_conflicts(
             next_action_date=now + timedelta(days=10),
             risk_score=0.72,
             confidence=0.65,
-            rationale='Buy disclosures align with AI accountability markup advancing in committee.',
+            rationale=('Sen. Jane Doe buy aligns with committee markup advancing '
+                       'AI accountability through LR-1000.'),
         ),
         ConflictInsight(
             ticker='REGN',
@@ -562,9 +563,13 @@ async def detect_conflicts(
             next_action_date=now + timedelta(days=6),
             risk_score=0.64,
             confidence=0.58,
-            rationale='State algorithmic accountability expansion overlaps with ongoing REGN accumulation.',
+            rationale=('Rep. Alex Smith accumulation coincides with state algorithmic '
+                       'accountability expansion hearings.'),
         ),
     ][:limit]
+
+
+
 
 
 def _ensure_timezone(value: datetime) -> datetime:

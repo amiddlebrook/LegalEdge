@@ -117,6 +117,11 @@ def _fallback_payload(
             horizon_days=45,
             catalysts=['SEC modernization', 'State privacy rules'],
             risk_rating='medium',
+            composite_score=0.74,
+            policy_alignment=0.68,
+            conflict_score=0.22,
+            drivers=['SEC modernization', 'State privacy rules'],
+            explanation='Regtech signals align with compliance modernization momentum across federal and state venues.',
         ),
         OpportunityRecommendation(
             ticker='AIQ',
@@ -126,6 +131,11 @@ def _fallback_payload(
             horizon_days=30,
             catalysts=['Federal AI procurement bill', 'Defense modernization budget'],
             risk_rating='medium',
+            composite_score=0.71,
+            policy_alignment=0.66,
+            conflict_score=0.18,
+            drivers=['Federal AI procurement bill', 'Defense modernization budget'],
+            explanation='Procurement legislation momentum supports AIQ positioning with minimal conflict drag observed.',
         ),
         OpportunityRecommendation(
             ticker='CSPN',
@@ -135,6 +145,11 @@ def _fallback_payload(
             horizon_days=60,
             catalysts=['State privacy frameworks', 'Federal oversight expansion'],
             risk_rating='balanced',
+            composite_score=0.62,
+            policy_alignment=0.58,
+            conflict_score=0.31,
+            drivers=['State privacy frameworks', 'Federal oversight expansion'],
+            explanation='Privacy oversight proposals bolster CSPN demand despite moderate conflict friction to monitor.',
         ),
         OpportunityRecommendation(
             ticker='GRID',
@@ -144,6 +159,11 @@ def _fallback_payload(
             horizon_days=75,
             catalysts=['Infrastructure grants', 'Resilience task force'],
             risk_rating='low',
+            composite_score=0.59,
+            policy_alignment=0.54,
+            conflict_score=0.16,
+            drivers=['Infrastructure grants', 'Resilience task force'],
+            explanation='Infrastructure funding continues to support GRID with limited conflict risk observed in disclosures.',
         ),
     ]
 
