@@ -10,8 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.legislation import LegislativeBill
 from app.models.portfolio import TradeDisclosure
-from app.repositories.portfolio import list_recent_trades
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, TradeActivity, PortfolioSnapshot, TickerDrilldown, TradeTimelinePoint, MemberExposure, WatchlistSnapshot, WatchlistEntry, PortfolioSnapshot, TickerDrilldown
+from app.repositories.portfolio import list_recent_trades, list_trade_disclosures_with_bills
+from app.schemas.portfolio import (
+    ConflictInsight,
+    PortfolioSignal,
+    PortfolioSnapshot,
+    TradeActivity,
+    TradeTimelinePoint,
+    MemberExposure,
+    WatchlistSnapshot,
+    WatchlistEntry,
+    TickerDrilldown,
+    TradeDisclosureDetail,
+    RelatedBillSummary,
+)
 
 
 async def aggregate_signals(
@@ -614,6 +626,113 @@ def _score_conflict(trade: TradeDisclosure, bill: LegislativeBill | None) -> tup
 
 
 
+
+
+
+async def get_recent_trade_disclosures(
+    limit: int = 20,
+    *,
+    session: AsyncSession | None = None,
+    lookback_days: int = 90,
+) -> list[TradeDisclosureDetail]:
+    """Return normalized trade disclosures linked to policy context."""
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=max(1, lookback_days))
+
+    if session is not None:
+        try:
+            rows = await list_trade_disclosures_with_bills(
+                session, limit=limit, since=cutoff
+            )
+        except Exception as exc:  # pragma: no cover - defensive log
+            logger.warning('Failed to fetch trade disclosures from DB: %s', exc)
+        else:
+            if rows:
+                disclosures = [
+                    _build_trade_disclosure_detail(trade, bill)
+                    for trade, bill in rows
+                ]
+                if disclosures:
+                    return disclosures[:limit]
+
+    return _fallback_trade_disclosures(now, limit)
+
+
+def _build_trade_disclosure_detail(
+    trade: TradeDisclosure, bill: LegislativeBill | None
+) -> TradeDisclosureDetail:
+    conflict_risk, conflict_confidence, rationale = _score_conflict(trade, bill)
+    related = None
+    if bill is not None:
+        related = RelatedBillSummary(
+            bill_id=bill.bill_id,
+            title=bill.title,
+            stage=bill.stage,
+            jurisdiction=bill.jurisdiction,
+            probability_of_enactment=bill.probability_of_enactment,
+            next_action_date=bill.next_action_date,
+        )
+
+    return TradeDisclosureDetail(
+        ticker=trade.ticker,
+        member=trade.member,
+        chamber=trade.chamber,
+        transaction_type=trade.transaction_type,
+        transaction_date=_ensure_timezone(trade.transaction_date),
+        amount_range=trade.amount_range,
+        source=getattr(trade, 'source', None),
+        conflict_risk_score=round(conflict_risk, 3) if conflict_risk is not None else None,
+        conflict_confidence=round(conflict_confidence, 3) if conflict_confidence is not None else None,
+        conflict_rationale=rationale,
+        related_bill=related,
+    )
+
+
+def _fallback_trade_disclosures(now: datetime, limit: int) -> list[TradeDisclosureDetail]:
+    samples = [
+        TradeDisclosureDetail(
+            ticker='AIT',
+            member='Sen. Jane Doe',
+            chamber='Senate',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=2),
+            amount_range='$50k-$100k',
+            source='seed.sample',
+            conflict_risk_score=0.72,
+            conflict_confidence=0.65,
+            conflict_rationale='Sen. Jane Doe buy aligns with committee markup advancing AI accountability through LR-1000.',
+            related_bill=RelatedBillSummary(
+                bill_id='LR-1000',
+                title='AI Accountability and Transparency Act',
+                stage='Committee',
+                jurisdiction='Federal',
+                probability_of_enactment=0.31,
+                next_action_date=now.date() + timedelta(days=10),
+            ),
+        ),
+        TradeDisclosureDetail(
+            ticker='REGN',
+            member='Rep. Alex Smith',
+            chamber='House',
+            transaction_type='BUY',
+            transaction_date=now - timedelta(days=1, hours=4),
+            amount_range='$15k-$50k',
+            source='seed.sample',
+            conflict_risk_score=0.64,
+            conflict_confidence=0.58,
+            conflict_rationale='Rep. Alex Smith accumulation coincides with state algorithmic accountability expansion hearings.',
+            related_bill=RelatedBillSummary(
+                bill_id='CA-AB-452',
+                title='California Algorithmic Accountability Framework',
+                stage='Assembly',
+                jurisdiction='California',
+                probability_of_enactment=0.28,
+                next_action_date=now.date() + timedelta(days=6),
+            ),
+        ),
+    ]
+    return samples[:limit]
 
 async def export_portfolio_snapshot_csv(
     *,

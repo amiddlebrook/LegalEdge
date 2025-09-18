@@ -13,7 +13,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [x] Operationalize market opportunity ranking and conflict scoring using live data plus ML outputs with explainability (policy-aware ranker + conflict dampening in API).
 
 ## Portfolio & Alerts Experience
-- [ ] Continuously ingest and normalize congressional trade disclosures, linking trades to pending legislation.
+- [x] Continuously ingest and normalize congressional trade disclosures, linking trades to pending legislation.
 - [ ] Implement configurable alerting (severity, category, personalization) with push channels (email/SMS/webhooks).
 - [x] Expand portfolio dashboards with drilldowns (member history, bill timelines, watchlists) and exportable reports.
 

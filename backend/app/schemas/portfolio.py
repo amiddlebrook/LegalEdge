@@ -1,5 +1,5 @@
 """Portfolio tracker schemas."""
-from datetime import datetime
+from datetime import datetime, date
 
 from pydantic import BaseModel
 
@@ -43,6 +43,34 @@ class ConflictInsight(BaseModel):
     risk_score: float
     confidence: float
     rationale: str
+
+
+
+class RelatedBillSummary(BaseModel):
+    """Lean summary of legislation associated with a trade."""
+
+    bill_id: str
+    title: str | None = None
+    stage: str | None = None
+    jurisdiction: str | None = None
+    probability_of_enactment: float | None = None
+    next_action_date: date | None = None
+
+
+class TradeDisclosureDetail(BaseModel):
+    """Normalized congressional trade disclosure with risk context."""
+
+    ticker: str
+    member: str
+    chamber: str
+    transaction_type: str
+    transaction_date: datetime
+    amount_range: str
+    source: str | None = None
+    conflict_risk_score: float | None = None
+    conflict_confidence: float | None = None
+    conflict_rationale: str | None = None
+    related_bill: RelatedBillSummary | None = None
 
 class TradeTimelinePoint(BaseModel):
     """Aggregated activity metrics for a specific day."""
@@ -112,4 +140,3 @@ class WatchlistSnapshot(BaseModel):
     tickers_requested: list[str]
     total_trades: int
     entries: list[WatchlistEntry]
-

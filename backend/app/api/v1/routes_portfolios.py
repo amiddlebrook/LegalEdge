@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import maybe_get_session
-from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint, MemberExposure, TradeActivity, WatchlistSnapshot
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history, get_watchlist_summary
+from app.schemas.portfolio import ConflictInsight, PortfolioSignal, PortfolioSnapshot, TradeTimelinePoint, MemberExposure, TradeActivity, WatchlistSnapshot, TradeDisclosureDetail
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history, get_watchlist_summary, get_recent_trade_disclosures
 
 
 router = APIRouter(prefix="/portfolios", tags=["Portfolios"])
@@ -118,3 +118,20 @@ async def portfolio_conflicts(
 
 
 
+
+
+@router.get(
+    '/disclosures/recent',
+    response_model=list[TradeDisclosureDetail],
+    summary='Recent congressional trade disclosures',
+)
+async def portfolio_recent_disclosures(
+    limit: int = Query(default=20, ge=1, le=100),
+    lookback_days: int = Query(default=90, ge=1, le=365),
+    session: AsyncSession | None = Depends(maybe_get_session),
+) -> list[TradeDisclosureDetail]:
+    """Expose normalized trade disclosures linked to pending policy."""
+
+    return await get_recent_trade_disclosures(
+        limit=limit, lookback_days=lookback_days, session=session
+    )

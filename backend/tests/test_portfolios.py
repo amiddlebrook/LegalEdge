@@ -55,3 +55,17 @@ def test_portfolio_watchlist_summary_endpoint():
     assert response.status_code == 200
     payload = response.json()
     assert payload['entries']
+
+
+
+def test_portfolio_recent_disclosures_endpoint():
+    client = TestClient(create_application())
+    response = client.get('/api/v1/portfolios/disclosures/recent', params={'limit': 2, 'lookback_days': 45})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    first = payload[0]
+    assert first['ticker']
+    assert first['transaction_date']
+    if first.get('related_bill'):
+        assert first['related_bill']['bill_id']
