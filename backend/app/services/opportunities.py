@@ -5,6 +5,7 @@ from typing import Iterable
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ml.opportunity_ranker import rank_opportunities
 from app.repositories.insights import list_opportunities
 from app.schemas.opportunity import OpportunityPayload, OpportunityRecommendation
 
@@ -32,14 +33,17 @@ async def get_market_opportunities(
     min_conviction: float | None = None,
     max_horizon_days: int | None = None,
 ) -> OpportunityPayload:
-    logger.debug('Generating %s market opportunities', limit)
-    """Return opportunity recommendations seeded in the database when available."""
+    """Return opportunity recommendations enriched with ranking metadata."""
 
+    logger.debug('Generating %s market opportunities', limit)
     normalized_risks = _normalize_risk_filters(risk_ratings)
+
+    base_recommendations: list[OpportunityRecommendation] = []
+    generated_at: datetime | None = None
 
     if session is not None:
         try:
-            opportunities = await list_opportunities(
+            records = await list_opportunities(
                 session,
                 limit=limit,
                 risk_ratings=normalized_risks,
@@ -49,32 +53,50 @@ async def get_market_opportunities(
         except Exception as exc:  # pragma: no cover - defensive log
             logger.warning('Failed to fetch opportunities from DB: %s', exc)
         else:
-            if opportunities:
-                generated_at = opportunities[0].updated_at or opportunities[0].created_at
-                return OpportunityPayload(
-                    generated_at=generated_at,
-                    opportunities=[
-                        OpportunityRecommendation(
-                            ticker=item.ticker,
-                            thesis=item.thesis,
-                            expected_return_pct=item.expected_return_pct,
-                            conviction=item.conviction,
-                            horizon_days=item.horizon_days,
-                            catalysts=list(item.catalysts or []),
-                            risk_rating=item.risk_rating,
-                        )
-                        for item in opportunities
-                    ],
-                    applied_filters=_build_applied_filters(
-                        risk_ratings, min_conviction, max_horizon_days
-                    ),
-                )
+            if records:
+                logger.debug('Serving %s opportunity records from database', len(records))
+                generated_at = records[0].updated_at or records[0].created_at or datetime.now(timezone.utc)
+                base_recommendations = [
+                    OpportunityRecommendation(
+                        ticker=item.ticker,
+                        thesis=item.thesis,
+                        expected_return_pct=item.expected_return_pct,
+                        conviction=item.conviction,
+                        horizon_days=item.horizon_days,
+                        catalysts=list(item.catalysts or []),
+                        risk_rating=item.risk_rating,
+                    )
+                    for item in records
+                ]
 
-    return _fallback_payload(
-        limit=limit,
-        risk_ratings=normalized_risks,
-        min_conviction=min_conviction,
-        max_horizon_days=max_horizon_days,
+    if not base_recommendations:
+        fallback = _fallback_payload(
+            limit=limit,
+            risk_ratings=normalized_risks,
+            min_conviction=min_conviction,
+            max_horizon_days=max_horizon_days,
+        )
+        base_recommendations = fallback.opportunities
+        generated_at = fallback.generated_at
+        logger.debug('Falling back to stubbed opportunity recommendations')
+
+    horizon_hint = max_horizon_days or max((item.horizon_days for item in base_recommendations), default=45)
+    ranked, metadata = await rank_opportunities(
+        base_recommendations,
+        session=session,
+        horizon_days=horizon_hint,
+    )
+
+    ordered = ranked[:limit]
+    applied_filters = _build_applied_filters(risk_ratings, min_conviction, max_horizon_days)
+
+    return OpportunityPayload(
+        generated_at=generated_at or datetime.now(timezone.utc),
+        opportunities=ordered,
+        applied_filters=applied_filters,
+        ranker_version=metadata.get('ranker_version'),
+        scoring_notes=metadata.get('scoring_notes'),
+        top_drivers=metadata.get('top_drivers'),
     )
 
 

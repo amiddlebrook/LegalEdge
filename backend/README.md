@@ -86,6 +86,15 @@ Services consume the pipeline through `app.services.legislation.analyze_legislat
 
 The `/api/v1/forecasts/sector` endpoint and dashboard payloads now include `estimated_accuracy`, `methodology_summary`, and `drivers` metadata.
 
+## Opportunity ranking
+
+`app/ml/opportunity_ranker.py` blends forecast outputs with conflict surveillance to score `/api/v1/opportunities`:
+
+- Aggregates sector forecasts, conviction, and conflict risk into a bounded composite score with explicit scoring notes.
+- Surfaces alignment metrics, conflict dampening, and the top drivers/conflict insights per ticker for explainability.
+- Reorders database or fallback recommendations and injects `ranker_version`, `scoring_notes`, and `top_drivers` metadata into the payload.
+
+
 ## Logging
 
 Loguru is installed as the unified logging sink. `configure_logging()` intercepts Uvicorn/FastAPI loggers so background tasks and API handlers emit consistent structured logs.

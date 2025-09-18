@@ -73,6 +73,14 @@ _SECTOR_TICKERS: dict[str, list[str]] = {
     'infrastructure': ['EVGR', 'LOGI', 'CIVN'],
 }
 
+
+def _resolve_sector(ticker: str) -> str | None:
+    ticker_upper = ticker.upper()
+    for sector, tickers in _SECTOR_TICKERS.items():
+        if ticker_upper in tickers:
+            return sector
+    return None
+
 _SECTOR_SYNOPSIS: dict[str, str] = {
     'technology': (
         'Legislation introduces incentives for secure AI infrastructure, modernization grants, '
@@ -135,6 +143,15 @@ class Forecaster:
         self._pipeline = get_pipeline()
         self._last_trained_at = datetime.now()
         self._baseline_accuracy = 0.72
+
+    def resolve_sector_for_ticker(self, ticker: str) -> str | None:
+        """Return the canonical sector label for a ticker when known."""
+
+        sector = _resolve_sector(ticker)
+        if sector is None:
+            return None
+        return sector.title()
+
 
     async def forecast_sector(
         self,
@@ -318,3 +335,4 @@ def get_forecaster() -> Forecaster:
     if _FORECASTER is None:
         _FORECASTER = Forecaster()
     return _FORECASTER
+

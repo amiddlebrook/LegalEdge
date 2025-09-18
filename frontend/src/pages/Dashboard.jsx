@@ -629,6 +629,13 @@ function mapOpportunity(item) {
     horizonDays: item.horizon_days ?? item.horizonDays,
     catalysts: item.catalysts ?? [],
     riskRating: item.risk_rating ?? item.riskRating ?? 'balanced',
+    compositeScore: item.composite_score ?? item.compositeScore ?? null,
+    policyAlignment: item.policy_alignment ?? item.policyAlignment ?? null,
+    conflictScore: item.conflict_score ?? item.conflictScore ?? null,
+    policyAlpha: item.policy_alpha ?? item.policyAlpha ?? null,
+    drivers: item.drivers ?? [],
+    explanation: item.explanation ?? null,
+    methodology: item.methodology ?? item.methodologySummary ?? null,
   }
 }
 

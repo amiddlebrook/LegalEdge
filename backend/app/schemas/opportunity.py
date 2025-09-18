@@ -15,6 +15,14 @@ class OpportunityRecommendation(BaseModel):
     horizon_days: int
     catalysts: list[str]
     risk_rating: str
+    policy_alignment: float | None = None
+    policy_alpha: float | None = None
+    conflict_score: float | None = None
+    composite_score: float | None = None
+    drivers: list[str] | None = None
+    conflict_insights: list[str] | None = None
+    explanation: str | None = None
+    methodology: str | None = None
 
 
 class OpportunityPayload(BaseModel):
@@ -23,3 +31,6 @@ class OpportunityPayload(BaseModel):
     generated_at: datetime
     opportunities: list[OpportunityRecommendation]
     applied_filters: dict[str, Any] | None = None
+    ranker_version: str | None = None
+    scoring_notes: str | None = None
+    top_drivers: list[str] | None = None

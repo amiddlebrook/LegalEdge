@@ -176,6 +176,11 @@ export const fallbackDashboard = {
       horizonDays: 45,
       catalysts: ['Federal AI procurement bill', 'Defense modernization roadmap'],
       riskRating: 'medium',
+      compositeScore: 0.78,
+      policyAlignment: 0.72,
+      conflictScore: 0.18,
+      drivers: ['Federal AI procurement bill', 'Defense modernization roadmap'],
+      explanation: 'Policy alignment contributes 72% with low conflict drag.',
     },
     {
       ticker: 'REGN',
@@ -185,6 +190,11 @@ export const fallbackDashboard = {
       horizonDays: 60,
       catalysts: ['SEC modernization tracker', 'Global transparency directives'],
       riskRating: 'balanced',
+      compositeScore: 0.71,
+      policyAlignment: 0.65,
+      conflictScore: 0.24,
+      drivers: ['SEC modernization tracker', 'Global transparency directives'],
+      explanation: 'Compliance catalysts propel upside despite moderate conflict risk.',
     },
   ],
   opportunityPreferences: { risk_ratings: ['medium', 'balanced'], min_conviction: 0.6, max_horizon_days: 60 },
@@ -256,6 +266,7 @@ export const fallbackCoverage = {
     'Real-time news and RSS signals',
   ],
 }
+
 
 
 
