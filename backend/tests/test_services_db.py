@@ -12,7 +12,7 @@ from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history, get_watchlist_summary
+from app.services.portfolio import aggregate_signals, detect_conflicts, get_portfolio_snapshot, get_trade_activity_timeline, get_member_exposures, get_member_trade_history, get_watchlist_summary, export_conflicts_csv
 
 
 @pytest.fixture
@@ -134,3 +134,11 @@ async def test_get_watchlist_summary(session):
     summary = await get_watchlist_summary(['AIT', 'GRID'], session=session, lookback_days=60)
     assert summary.entries
     assert summary.total_trades >= 1
+
+
+
+@pytest.mark.anyio
+async def test_export_conflicts_csv(session):
+    csv_output = await export_conflicts_csv(session=session, limit=10)
+    assert 'Ticker' in csv_output
+    assert 'Risk Score' in csv_output

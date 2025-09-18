@@ -1,9 +1,10 @@
-﻿"""Workflow orchestrators for ingestion and predictions."""
+"""Workflow orchestrators for ingestion and predictions."""
 from collections.abc import Callable
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.ml.legislation_pipeline import get_pipeline
 from app.schemas.legislation import BillImpactRequest
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import analyze_legislation, get_upcoming_legislation
@@ -67,3 +68,10 @@ async def generate_full_market_snapshot(
         'sector_forecast': sector_forecast.model_dump(),
         'signals': [signal.model_dump() for signal in signals],
     }
+
+
+async def retrain_legislation_models() -> None:
+    """Trigger scheduled retraining of NLP artifacts."""
+
+    pipeline = get_pipeline()
+    await pipeline.retrain()

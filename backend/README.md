@@ -42,6 +42,7 @@ app/
   schemas/      # Pydantic models shared by the API and services
   services/     # Domain services (ingestion, forecasting, portfolio tracking)
   workflows/    # Orchestration entry points for background tasks
+  ml/           # NLP pipelines, retraining utilities, and model orchestration
 ```
 
 The service is prepared for PostgreSQL via SQLAlchemy async sessions. Update the connection string via `.env` or environment variables prefixed with `LEGALEDGE_`.
@@ -50,18 +51,30 @@ The service is prepared for PostgreSQL via SQLAlchemy async sessions. Update the
 
 SQLAlchemy models live under `app/models` and cover:
 
-- `LegislativeBill` – normalized legislation metadata, jurisdiction, sector tags, and scoring fields.
-- `ForecastSignal` – sector/ticker forecasts with expected return, confidence, and catalysts.
-- `TradeDisclosure` – congressional trade disclosures linked back to legislation when available.
-- `PolicyAlert` – persisted alert feed items tying policy signals to entities.
-- `OpportunityRecommendation` – market opportunity engine outputs with conviction, horizon, catalysts, and risk ratings.
+- `LegislativeBill` - normalized legislation metadata, jurisdiction, sector tags, and scoring fields.
+- `ForecastSignal` - sector/ticker forecasts with expected return, confidence, and catalysts.
+- `TradeDisclosure` - congressional trade disclosures linked back to legislation when available.
+- `PolicyAlert` - persisted alert feed items tying policy signals to entities.
+- `OpportunityRecommendation` - market opportunity engine outputs with conviction, horizon, catalysts, and risk ratings.
 
 Repository helpers in `app/repositories` provide async query utilities and will back future ingestion pipelines.
 
-## Background ingestion
+## Background ingestion & retraining
 
-A recurring task manager triggers `run_daily_ingestion` on startup based on `LEGALEDGE_INGESTION_SCHEDULE_MINUTES`. When a database connection is configured, the task opens its own session (using `SessionLocal`) to exercise the ingestion pathways, paving the way for Prefect, Celery, or AWS-native jobs once real pipelines are wired.
-A connector manager now polls congress.gov, high-priority state portals, SEC Form 4/13D filings, and curated news feeds with rate limiting and deduplication before downstream workflows.
+A recurring task manager triggers `run_daily_ingestion` on startup based on `LEGALEDGE_INGESTION_SCHEDULE_MINUTES`. When a database connection is configured, the task opens its own session (using `SessionLocal`) to exercise the ingestion pathways, paving the way for Prefect, Celery, or AWS-native jobs once real pipelines are wired. A connector manager now polls congress.gov, high-priority state portals, SEC Form 4/13D filings, and curated news feeds with rate limiting and deduplication before downstream workflows.
+
+A second recurring task invokes the legislation NLP retraining routine on the cadence defined by `LEGALEDGE_MODEL_RETRAIN_SCHEDULE_MINUTES` (default 360 minutes). This keeps the scoring heuristics fresh and provides a bridge to future transformer fine-tuning jobs once GPU-backed workers are introduced.
+
+## Legislation NLP pipeline
+
+The `app/ml/legislation_pipeline.py` module introduces a hybrid bill analysis engine that:
+
+- Scores sentiment, enactment probability, and sector exposure based on curated lexical features.
+- Optionally blends in Hugging Face transformer sentiment (`LEGALEDGE_ENABLE_TRANSFORMERS=1`) when the dependency is installed.
+- Produces ticker-level projected movement, narrative drivers, and diagnostics for observability.
+- Exposes `retrain()` to recalibrate internal weights, exercised automatically by the scheduler or manually in tests.
+
+Services consume the pipeline through `app.services.legislation.analyze_legislation`, and outputs surface through `/api/v1/legislation/analyze` and downstream workflows (`generate_full_market_snapshot`).
 
 ## Logging
 
@@ -105,5 +118,4 @@ python -m app.cli ingest-connectors --runs 1  # poll connectors (add --dry-run t
 ```
 
 The scheduler also invokes `run-ingestion-once` automatically on the configured cadence.
-
 

@@ -1,7 +1,7 @@
 """Pydantic models for legislative data."""
 from datetime import date, datetime
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class LegislativeSource(BaseModel):
@@ -46,3 +46,9 @@ class BillImpactProjection(BaseModel):
     projected_movement: dict[str, float]
     confidence: float
     narrative: str
+    sentiment_score: float
+    enactment_probability: float
+    sector_impacts: dict[str, float] | None = None
+    model_version: str | None = None
+    drivers: list[str] = Field(default_factory=list)
+    diagnostics: dict[str, object] | None = None

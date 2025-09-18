@@ -13,7 +13,7 @@ from loguru import logger
 from app.db.session import SessionLocal
 from app.ingestion import IngestionManager, get_default_connectors, persist_batches
 from app.ingestion.sample_data import seed_sample_data
-from app.services.portfolio import export_member_trade_history_csv, export_portfolio_snapshot_csv
+from app.services.portfolio import export_member_trade_history_csv, export_portfolio_snapshot_csv, export_conflicts_csv
 from app.workflows.pipeline import run_daily_ingestion
 
 
@@ -41,6 +41,10 @@ def parse_args() -> argparse.Namespace:
     member_parser.add_argument('--lookback-days', type=int, default=180, help='Number of days to include (default: 180)')
     member_parser.add_argument('--limit', type=int, default=50, help='Maximum trades to export (default: 50)')
     member_parser.add_argument('--output', type=str, default='member_trades.csv', help='Destination CSV path')
+    conflicts_parser = subparsers.add_parser('export-conflicts', help='Export conflict insights to CSV')
+    conflicts_parser.add_argument('--limit', type=int, default=50, help='Maximum number of conflicts to export (default: 50)')
+    conflicts_parser.add_argument('--output', type=str, default='conflicts.csv', help='Destination CSV path')
+
 
     return parser.parse_args()
 
@@ -62,6 +66,13 @@ async def handle_export_portfolio_snapshot(lookback_days: int, top_n: int, outpu
     Path(output).write_text(csv_content, encoding='utf-8')
     logger.success('Portfolio snapshot exported to %s', output)
 
+
+
+async def handle_export_conflicts(limit: int, output: str) -> None:
+    async with SessionLocal() as session:
+        csv_content = await export_conflicts_csv(session=session, limit=limit)
+    Path(output).write_text(csv_content, encoding='utf-8')
+    logger.success('Conflict insights exported to %s', output)
 
 async def handle_export_member_trades(member: str, lookback_days: int, limit: int, output: str) -> None:
     async with SessionLocal() as session:
@@ -168,6 +179,9 @@ def main() -> None:
     elif command == 'export-member-trades':
         kwargs['member'] = args.member
         kwargs['lookback_days'] = args.lookback_days
+        kwargs['limit'] = args.limit
+        kwargs['output'] = args.output
+    elif command == 'export-conflicts':
         kwargs['limit'] = args.limit
         kwargs['output'] = args.output
 

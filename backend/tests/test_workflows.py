@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.ml.legislation_pipeline import LegislationNlpPipeline
 from app.models import Base, LegislativeBill, LegislativeBillVersion
-from app.workflows.pipeline import run_daily_ingestion
+from app.workflows import pipeline as workflows_pipeline
+from app.workflows.pipeline import retrain_legislation_models, run_daily_ingestion
 
 
 @pytest.fixture
@@ -61,4 +63,17 @@ async def test_run_daily_ingestion_uses_session_factory(session_factory):
             )
         )
         assert versions.scalars().all()
+
+
+@pytest.mark.anyio
+async def test_retrain_legislation_models(monkeypatch):
+    pipeline = LegislationNlpPipeline(enable_transformers=False)
+    monkeypatch.setattr(pipeline, '_stamp_version', lambda: 'v0')
+    await pipeline.retrain()
+    assert pipeline._model_version == 'v0'
+
+    monkeypatch.setattr(pipeline, '_stamp_version', lambda: 'v1')
+    monkeypatch.setattr(workflows_pipeline, 'get_pipeline', lambda: pipeline)
+    await retrain_legislation_models()
+    assert pipeline._model_version == 'v1'
 

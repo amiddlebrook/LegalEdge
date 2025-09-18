@@ -247,3 +247,21 @@ async def test_handle_export_member_trades(monkeypatch, tmp_path):
 
     assert called['params'] == ('Sen. Test', 90, 25)
     assert output_file.read_text() == 'Member,Ticker\nTest,ABC'
+
+
+@pytest.mark.anyio
+async def test_handle_export_conflicts(monkeypatch, tmp_path):
+    called = {}
+
+    async def fake_export_conflicts_csv(*, session=None, limit):
+        called['limit'] = limit
+        return 'Ticker,Member\nAIT,Sen. Jane Doe'
+
+    monkeypatch.setattr(cli, 'SessionLocal', DummySessionFactory({}))
+    monkeypatch.setattr(cli, 'export_conflicts_csv', fake_export_conflicts_csv)
+
+    output_file = tmp_path / 'conflicts.csv'
+    await cli.handle_export_conflicts(limit=20, output=str(output_file))
+
+    assert called['limit'] == 20
+    assert output_file.read_text() == 'Ticker,Member\nAIT,Sen. Jane Doe'

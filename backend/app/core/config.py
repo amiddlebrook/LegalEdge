@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     )
     redis_url: str = "redis://localhost:6379/0"
     ingestion_schedule_minutes: int = 30
+    model_retrain_schedule_minutes: int = 360
     openai_api_key: str | None = None
 
     model_config = SettingsConfigDict(

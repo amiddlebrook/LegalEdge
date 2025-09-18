@@ -8,7 +8,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [x] Implement entity resolution linking bills to tickers, committees, sectors, and maintain data quality dashboards.
 
 ## AI & Market Intelligence
-- [ ] Deliver transformer-based NLP pipeline for bill sentiment, enactment probability, and sector impact scoring; automate retraining.
+- [x] Deliver transformer-based NLP pipeline for bill sentiment, enactment probability, and sector impact scoring; automate retraining (hybrid pipeline with scheduled recalibration).
 - [ ] Develop time-series forecasting engine that blends policy signals with market data to reach the 70%+ accuracy target.
 - [ ] Operationalize market opportunity ranking and conflict scoring using live data plus ML outputs with explainability.
 

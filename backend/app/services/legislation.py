@@ -5,6 +5,7 @@ from typing import Iterable
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ml.legislation_pipeline import get_pipeline
 from app.repositories.legislation import list_upcoming_legislation as repo_list_upcoming_legislation
 from app.schemas.legislation import BillImpactProjection, BillImpactRequest, LegislativeBrief
 
@@ -31,18 +32,33 @@ async def get_upcoming_legislation(
 
 
 async def analyze_legislation(request: BillImpactRequest) -> BillImpactProjection:
-    """Placeholder AI analysis result."""
+    """Analyze legislation language and produce a market impact forecast."""
 
-    movement = {ticker: 0.05 for ticker in request.target_tickers}
+    pipeline = get_pipeline()
+    full_text: str | None = None
+    if request.full_text_url:
+        full_text = await pipeline.fetch_full_text(str(request.full_text_url))
+
+    result = await pipeline.analyze(
+        request.synopsis,
+        bill_id=request.bill_id,
+        target_tickers=request.target_tickers,
+        full_text=full_text,
+        risk_appetite=request.risk_appetite,
+    )
+
     return BillImpactProjection(
         bill_id=request.bill_id,
-        impacted_tickers=request.target_tickers,
-        projected_movement=movement,
-        confidence=0.62,
-        narrative=(
-            "Pending compliance costs could pressure margins in the short term, "
-            "but boosts to data governance providers create upside scenarios."
-        ),
+        impacted_tickers=list(result.ticker_impacts.keys()),
+        projected_movement=result.ticker_impacts,
+        confidence=result.confidence,
+        narrative=result.rationale,
+        sentiment_score=result.sentiment,
+        enactment_probability=result.enactment_probability,
+        sector_impacts=result.sector_impacts or None,
+        model_version=result.model_version,
+        drivers=result.drivers,
+        diagnostics=result.diagnostics or None,
     )
 
 

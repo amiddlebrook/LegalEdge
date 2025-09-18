@@ -648,6 +648,50 @@ async def export_portfolio_snapshot_csv(
     return _rows_to_csv(rows)
 
 
+
+async def export_conflicts_csv(
+    *,
+    session: AsyncSession | None = None,
+    limit: int = 50,
+) -> str:
+    """Generate CSV export for conflict insights."""
+
+    insights = await detect_conflicts(limit=limit, session=session)
+    rows = [[
+        'Ticker',
+        'Member',
+        'Chamber',
+        'Transaction Type',
+        'Transaction Date',
+        'Amount Range',
+        'Bill ID',
+        'Bill Title',
+        'Bill Stage',
+        'Jurisdiction',
+        'Next Action Date',
+        'Risk Score',
+        'Confidence',
+        'Rationale',
+    ]]
+    for item in insights:
+        rows.append([
+            item.ticker,
+            item.member,
+            item.chamber,
+            item.transaction_type,
+            item.transaction_date.isoformat(),
+            item.amount_range,
+            item.bill_id or '',
+            item.bill_title or '',
+            item.bill_stage or '',
+            item.jurisdiction or '',
+            item.next_action_date.isoformat() if item.next_action_date else '',
+            item.risk_score,
+            item.confidence,
+            item.rationale,
+        ])
+    return _rows_to_csv(rows)
+
 async def export_member_trade_history_csv(
     member: str,
     *,
