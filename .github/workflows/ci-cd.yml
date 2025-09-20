@@ -1,0 +1,321 @@
+name: LegalEdge CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+env:
+  AWS_REGION: us-east-1
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'ghcr.io' }}
+  DOCKER_REPO: ${{ github.repository }}
+
+jobs:
+  # Security and Quality Checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Backend Tests
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: legaledge_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          cd backend
+          pytest --cov=app --cov-report=xml --cov-report=term-missing
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/legaledge_test
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  # Frontend Tests
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run linting
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Run tests
+        run: |
+          cd frontend
+          npm test -- --coverage
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+  # Docker Build and Test
+  docker-build:
+    name: Docker Build & Test
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REPO }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and test backend image
+        uses: docker/buildx/build@v3
+        with:
+          context: .
+          dockerfile: Dockerfile.backend
+          push: false
+          load: true
+          tags: legaledge-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test backend image
+        run: |
+          docker run --rm legaledge-backend:test python -c "import app; print('Backend import successful')"
+
+      - name: Build frontend image
+        uses: docker/buildx/build@v3
+        with:
+          context: ./frontend
+          dockerfile: Dockerfile
+          push: false
+          load: true
+          tags: legaledge-frontend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test frontend image
+        run: |
+          docker run --rm legaledge-frontend:test npm run build
+
+      - name: Build production image
+        if: github.event_name != 'pull_request'
+        uses: docker/buildx/build@v3
+        with:
+          context: .
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Infrastructure Deployment
+  infrastructure:
+    name: Infrastructure Deployment
+    runs-on: ubuntu-latest
+    needs: [security-scan, docker-build]
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'infrastructure')
+    environment: ${{ inputs.environment || 'development' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "~1.6.0"
+
+      - name: Terraform Init
+        run: |
+          cd infrastructure
+          terraform init
+
+      - name: Terraform Plan
+        run: |
+          cd infrastructure
+          terraform plan -var="environment=${{ github.event.inputs.environment || 'development' }}" -out=tfplan
+        env:
+          TF_VAR_ssl_certificate_arn: ${{ secrets.SSL_CERTIFICATE_ARN }}
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          cd infrastructure
+          terraform apply -auto-approve tfplan
+
+  # Application Deployment
+  deploy:
+    name: Application Deployment
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, docker-build]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment != ''
+    environment: ${{ inputs.environment || 'development' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to ECS
+        run: |
+          # Update ECS service with new image
+          aws ecs update-service --cluster legaledge-${{ github.event.inputs.environment || 'development' }}-cluster \
+                                --service legaledge-${{ github.event.inputs.environment || 'development' }}-app \
+                                --task-definition legaledge-${{ github.event.inputs.environment || 'development' }}-app
+
+      - name: Wait for deployment
+        run: |
+          aws ecs wait services-stable --cluster legaledge-${{ github.event.inputs.environment || 'development' }}-cluster \
+                                      --service legaledge-${{ github.event.inputs.environment || 'development' }}-app
+
+      - name: Run health check
+        run: |
+          # Wait for load balancer to be healthy
+          sleep 30
+          curl -f https://${{ steps.get-outputs.outputs.load_balancer_dns }}/api/v1/health/status
+
+  # Post-Deployment
+  post-deploy:
+    name: Post-Deployment Checks
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run smoke tests
+        run: |
+          # Basic health check
+          curl -f https://${{ needs.deploy.outputs.load_balancer_dns }}/api/v1/health/status
+
+          # Check API endpoints
+          curl -f https://${{ needs.deploy.outputs.load_balancer_dns }}/api/v1/overview
+
+      - name: Send deployment notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

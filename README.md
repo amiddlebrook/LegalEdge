@@ -24,7 +24,71 @@ uvicorn app.main:app --reload
 
 ```bash
 cd frontend
-npm install
+npm run dev
+```
+
+## Deployment
+
+### Quick Start (Development)
+```bash
+# Install dependencies
+cd backend && pip install -r requirements.txt
+cd ../frontend && npm install
+
+# Start services with Docker Compose
+docker-compose up postgres redis
+
+# Run backend
+cd backend && uvicorn app.main:app --reload
+
+# Run frontend
+cd frontend && npm run dev
+```
+
+### Production Deployment
+```bash
+# Build and deploy to AWS
+cd infrastructure
+terraform init
+terraform plan -var="environment=production"
+terraform apply
+
+# Deploy application
+aws ecs update-service --cluster legaledge-production-cluster \
+  --service legaledge-production-app --force-new-deployment
+```
+
+### Infrastructure Components
+- **ECS Fargate**: Container orchestration
+- **RDS PostgreSQL**: Primary database
+- **ElastiCache Redis**: Caching and sessions
+- **S3**: Static assets and data storage
+- **CloudFront**: CDN for global performance
+- **Load Balancer**: Traffic distribution
+- **VPC**: Secure network isolation
+
+## Monitoring & Operations
+
+### Health Checks
+- **Application**: `/api/v1/health/status`
+- **Load Balancer**: Target group health checks
+- **Database**: Connection monitoring
+- **Cache**: Redis connectivity
+
+### Monitoring Dashboard
+Access monitoring dashboards at:
+- **Application Metrics**: CloudWatch Dashboard
+- **Infrastructure**: AWS Console
+- **Logs**: CloudWatch Logs Insights
+
+### CI/CD Pipeline
+Automated deployment via GitHub Actions:
+- Code quality checks
+- Security scanning
+- Docker image building
+- Infrastructure deployment
+- Health verification
+
 ## Background Workers
 
 LegalEdge uses Celery for robust background task processing with Redis as the message broker.
@@ -82,12 +146,7 @@ python -m app.workers.cli task ingestion
 
 Access Flower monitoring interface at `http://localhost:5555` when running with Docker Compose.
 
-1. Connect external data sources (congress.gov, SEC, state portals) to replace stub services.
-2. Implement transformer-based NLP pipelines for legislation analysis and forecasting accuracy targets.
-3. Stand up PostgreSQL schemas and background ingestion workers (Celery/Prefect/AWS Lambda).
-4. Harden authentication with OAuth 2.0 and instrument SOC2-aligned logging and monitoring.
-
-### API surface
+## API surface
 
 - `GET /api/v1/overview` - returns hero copy, feature pillars, metrics, and workflow data consumed by the React client.
 - `GET /api/v1/dashboard/snapshot` - aggregates legislation, forecast, and portfolio signals for the investor view.

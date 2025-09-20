@@ -28,7 +28,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [x] Implement global state/query caching, skeleton loading states, responsive polish, and accessibility compliance.
 
 ## Infrastructure & Operations
-- [ ] Provision AWS infrastructure (VPC, ECS/Lambda, RDS, S3, CloudFront) via Terraform with automated deploys.
+- [x] Provision AWS infrastructure (VPC, ECS/Lambda, RDS, S3, CloudFront) via Terraform with automated deploys.
 - [ ] Configure CI/CD with tests, linting, security scans, and observability (metrics, tracing, logging).
 - [ ] Establish disaster recovery playbooks, data retention policies, and cost monitoring.
 
