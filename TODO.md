@@ -24,8 +24,8 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## Frontend Experience
 - [x] Enrich dashboard with live charts/visualizations, coverage heatmaps, and legislation timelines.
-- [ ] Build alert management UI, portfolio conflict explorer, and persona-specific workflows.
-- [ ] Implement global state/query caching, skeleton loading states, responsive polish, and accessibility compliance.
+- [x] Build alert management UI, portfolio conflict explorer, and persona-specific workflows.
+- [x] Implement global state/query caching, skeleton loading states, responsive polish, and accessibility compliance.
 
 ## Infrastructure & Operations
 - [ ] Provision AWS infrastructure (VPC, ECS/Lambda, RDS, S3, CloudFront) via Terraform with automated deploys.
