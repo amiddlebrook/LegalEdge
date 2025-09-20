@@ -6,13 +6,22 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.ingestion.sample_data import seed_sample_data
 from app.models import Base, ForecastSignal, LegislativeBill, OpportunityRecommendation, PolicyAlert, TradeDisclosure
-from app.services.alerts import get_alert_feed
+from app.services.alerts import (
+    create_alert_subscription,
+    deactivate_alert_subscription,
+    dispatch_alert,
+    get_alert_feed,
+    get_alert_subscription_detail,
+    list_configured_alert_subscriptions,
+    preview_alert_dispatch,
+    update_alert_subscription,
+)
 from app.services.coverage import get_coverage_summary
 from app.services.entity_resolution import build_entity_resolution_summary
 from app.services.forecasting import build_sector_forecast
 from app.services.legislation import get_upcoming_legislation
 from app.services.opportunities import get_market_opportunities
-from app.services.portfolio import (
+from app.schemas.alerts import AlertSubscriptionCreate, AlertSubscriptionUpdate, NotificationChannelConfig\nfrom app.services.portfolio import (
     aggregate_signals,
     detect_conflicts,
     export_conflicts_csv,
@@ -155,6 +164,64 @@ async def test_get_recent_trade_disclosures(session):
 
 
 
+
+
+
+@pytest.mark.anyio
+async def test_manage_alert_subscriptions(session):
+    payload = AlertSubscriptionCreate(
+        subscriber_id='engineer@legaledge.ai',
+        label='Engineering high severity',
+        categories=['Legislation'],
+        entities=['AIT'],
+        severities=['High'],
+        min_severity='high',
+        channels=[NotificationChannelConfig(type='email', target='engineer@legaledge.ai')],
+    )
+    subscription = await create_alert_subscription(payload, session=session)
+    assert subscription.id
+    assert subscription.categories == ['legislation']
+
+    scoped = await list_configured_alert_subscriptions(
+        session=session, subscriber_id='engineer@legaledge.ai'
+    )
+    assert any(item.id == subscription.id for item in scoped)
+
+    updated = await update_alert_subscription(
+        subscription.id,
+        AlertSubscriptionUpdate(entities=['AIT', 'REGN'], min_severity='critical'),
+        session=session,
+    )
+    assert updated.min_severity == 'critical'
+    assert 'REGN' in updated.entities
+
+    await deactivate_alert_subscription(subscription.id, session=session)
+    detail = await get_alert_subscription_detail(subscription.id, session=session)
+    assert detail.is_active is False
+
+
+@pytest.mark.anyio
+async def test_preview_and_dispatch_alerts(session):
+    payload = AlertSubscriptionCreate(
+        subscriber_id='alerts@legaledge.ai',
+        label='Legislation broadcasts',
+        categories=['Legislation'],
+        entities=['HR-1001'],
+        severities=['High'],
+        channels=[NotificationChannelConfig(type='email', target='alerts@legaledge.ai')],
+    )
+    created = await create_alert_subscription(payload, session=session)
+    assert created.id
+
+    preview = await preview_alert_dispatch('alert-hr1001', session=session)
+    assert preview.targets
+    assert any(target.subscription_id == created.id for target in preview.targets)
+
+    dispatch = await dispatch_alert('alert-hr1001', session=session)
+    assert dispatch.total_channels == preview.total_channels
+    detail = await get_alert_subscription_detail(created.id, session=session)
+    assert detail.last_notified_at is not None
+
 @pytest.mark.anyio
 async def test_get_watchlist_summary(session):
     summary = await get_watchlist_summary(['AIT', 'GRID'], session=session, lookback_days=60)
@@ -168,5 +235,8 @@ async def test_export_conflicts_csv(session):
     csv_output = await export_conflicts_csv(session=session, limit=10)
     assert 'Ticker' in csv_output
     assert 'Risk Score' in csv_output
+
+
+
 
 

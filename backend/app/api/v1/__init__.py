@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from . import (
     routes_alerts,
+    routes_auth,
     routes_coverage,
     routes_dashboard,
     routes_entity_resolution,
@@ -26,3 +27,4 @@ router.include_router(routes_dashboard.router)
 router.include_router(routes_opportunities.router)
 router.include_router(routes_alerts.router)
 router.include_router(routes_entity_resolution.router)
+router.include_router(routes_auth.router)

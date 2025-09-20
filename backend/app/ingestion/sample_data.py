@@ -18,6 +18,11 @@ from app.models import (
     OpportunityRecommendation,
     PolicyAlert,
     TradeDisclosure,
+    AlertSubscription,
+    User,
+    Role,
+    UserRole,
+    AuditLog,
 )
 
 
@@ -32,6 +37,11 @@ async def seed_sample_data(session: AsyncSession, *, reset: bool = False) -> Non
             TradeDisclosure,
             PolicyAlert,
             OpportunityRecommendation,
+            AlertSubscription,
+            User,
+            Role,
+            UserRole,
+            AuditLog,
         ):
             await session.execute(delete(model))
 
@@ -39,16 +49,24 @@ async def seed_sample_data(session: AsyncSession, *, reset: bool = False) -> Non
     sector_forecasts = await _seed_forecasts(session)
     trade_disclosures = await _seed_trades(session)
     policy_alerts = await _seed_alerts(session)
+    alert_subscriptions = await _seed_alert_subscriptions(session)
     opportunities = await _seed_opportunities(session)
+    users = await _seed_users(session)
+    roles = await _seed_roles(session)
+    user_roles = await _seed_user_roles(session)
 
     await session.commit()
     logger.info(
-        'Seed completed: %s bills, %s forecasts, %s trades, %s alerts, %s opportunities',
+        'Seed completed: %s bills, %s forecasts, %s trades, %s alerts, %s subscriptions, %s opportunities, %s users, %s roles, %s user_roles',
         upcoming_bills,
         sector_forecasts,
         trade_disclosures,
         policy_alerts,
+        alert_subscriptions,
         opportunities,
+        users,
+        roles,
+        user_roles,
     )
 
 
@@ -101,6 +119,24 @@ async def _seed_alerts(session: AsyncSession) -> int:
         if alert.alert_key in existing_alert_keys:
             continue
         session.add(alert)
+        created += 1
+    return created
+
+
+
+
+async def _seed_alert_subscriptions(session: AsyncSession) -> int:
+    existing = await session.execute(
+        select(AlertSubscription.subscriber_id, AlertSubscription.label)
+    )
+    existing_keys = {(row[0], row[1]) for row in existing}
+
+    created = 0
+    for subscription in _sample_alert_subscriptions():
+        key = (subscription.subscriber_id, subscription.label)
+        if key in existing_keys:
+            continue
+        session.add(subscription)
         created += 1
     return created
 
@@ -284,6 +320,42 @@ def _sample_alerts() -> Iterable[PolicyAlert]:
         )
 
 
+
+
+def _sample_alert_subscriptions() -> Iterable[AlertSubscription]:
+    now = datetime.now(timezone.utc)
+    return [
+        AlertSubscription(
+            subscriber_id='product@legaledge.ai',
+            label='Policy leadership notifications',
+            categories=['legislation', 'state policy'],
+            entities=['AIT', 'CA-AB-452'],
+            severities=['high', 'critical'],
+            min_severity='high',
+            channels=[
+                {'type': 'email', 'target': 'product@legaledge.ai', 'is_verified': True},
+                {'type': 'webhook', 'target': 'https://hooks.legaledge.ai/alerts'},
+            ],
+            created_at=now,
+            updated_at=now,
+        ),
+        AlertSubscription(
+            subscriber_id='sales@legaledge.ai',
+            label='Investor relations alerts',
+            categories=['congressional trades'],
+            entities=['REGN', 'GRID'],
+            severities=['medium', 'high', 'critical'],
+            min_severity='medium',
+            channels=[
+                {'type': 'email', 'target': 'sales@legaledge.ai', 'is_verified': True},
+                {'type': 'sms', 'target': '+15555550100'},
+            ],
+            created_at=now,
+            updated_at=now,
+        ),
+    ]
+
+
 def _sample_opportunities() -> Iterable[OpportunityRecommendation]:
     now = datetime.now(timezone.utc)
     for ticker, thesis, expected, conviction, horizon_days, catalysts, risk in [
@@ -352,5 +424,8 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
+
 
 

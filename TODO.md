@@ -14,12 +14,12 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## Portfolio & Alerts Experience
 - [x] Continuously ingest and normalize congressional trade disclosures, linking trades to pending legislation.
-- [ ] Implement configurable alerting (severity, category, personalization) with push channels (email/SMS/webhooks).
+- [x] Implement configurable alerting (severity, category, personalization) with push channels (email/SMS/webhooks).
 - [x] Expand portfolio dashboards with drilldowns (member history, bill timelines, watchlists) and exportable reports.
 
 ## Backend Platform
 - [ ] Replace stub repositories with full SQLAlchemy models, migrations, CRUD, and caching layers.
-- [ ] Add OAuth 2.0 authentication, role-based access, rate limiting, audit logging, and polished OpenAPI documentation.
+- [x] Add OAuth 2.0 authentication, role-based access, rate limiting, audit logging, and polished OpenAPI documentation.
 - [ ] Stand up background workers (Celery/Prefect) for ingestion, enrichment, retraining, and scheduled snapshots.
 
 ## Frontend Experience
