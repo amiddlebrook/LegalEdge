@@ -13,7 +13,23 @@
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^6.30.1",
+    "react-query": "^3.39.3",
+    "@tanstack/react-query": "^4.36.1",
+    "axios": "^1.7.7",
+    "recharts": "^2.12.7",
+    "react-chartjs-2": "^5.2.0",
+    "chart.js": "^4.4.4",
+    "react-table": "^7.8.0",
+    "@headlessui/react": "^2.2.0",
+    "react-hook-form": "^7.53.0",
+    "react-hot-toast": "^2.4.1",
+    "react-loading-skeleton": "^3.5.0",
+    "date-fns": "^4.1.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.10",
+    "react-intersection-observer": "^9.13.1",
+    "react-use": "^17.5.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

@@ -23,7 +23,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [x] Stand up background workers (Celery/Prefect) for ingestion, enrichment, retraining, and scheduled snapshots.
 
 ## Frontend Experience
-- [ ] Enrich dashboard with live charts/visualizations, coverage heatmaps, and legislation timelines.
+- [x] Enrich dashboard with live charts/visualizations, coverage heatmaps, and legislation timelines.
 - [ ] Build alert management UI, portfolio conflict explorer, and persona-specific workflows.
 - [ ] Implement global state/query caching, skeleton loading states, responsive polish, and accessibility compliance.
 

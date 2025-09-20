@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { AlertBanner } from '../components/AlertBanner.jsx'
-import { ConflictRiskCard } from '../components/ConflictRiskCard.jsx'
-import { ForecastSignalCard } from '../components/ForecastSignalCard.jsx'
-import { LegislationCard } from '../components/LegislationCard.jsx'
-import { OpportunityCard } from '../components/OpportunityCard.jsx'
-import { PortfolioSignalCard } from '../components/PortfolioSignalCard.jsx'
+import { DashboardCharts } from '../components/DashboardCharts'
+import { AlertManagement } from '../components/AlertManagement'
+import { SkeletonCard, DashboardSkeleton } from '../components/Skeleton'
+import { AlertBanner } from '../components/AlertBanner'
+import { ConflictRiskCard } from '../components/ConflictRiskCard'
+import { ForecastSignalCard } from '../components/ForecastSignalCard'
+import { LegislationCard } from '../components/LegislationCard'
+import { OpportunityCard } from '../components/OpportunityCard'
+import { PortfolioSignalCard } from '../components/PortfolioSignalCard'
 import { useApiCache } from '../context/ApiCacheContext.jsx'
 import { api } from '../lib/api.js'
 import { fallbackDashboard } from '../lib/fallbacks.js'
-
-const sectors = ['Technology', 'Financial Services', 'Healthcare', 'Energy', 'Industrials']
 const horizonOptions = [30, 45, 60, 90, 120]
 const riskRatingOptions = ['low', 'balanced', 'medium', 'high']
 const alertSeverityOptions = [
@@ -318,23 +319,21 @@ export function DashboardPage() {
           <h2 className="text-2xl font-semibold text-white">Real-time alerts</h2>
           <span className="text-xs text-slate-500">{formatAlertFilters(dashboard.alertFilters)}</span>
         </div>
-              {dashboard.opportunityMeta.scoringNotes ? (
-                <span className="text-slate-400">{dashboard.opportunityMeta.scoringNotes}</span>
-              ) : null}
-              {dashboard.opportunityMeta.topDrivers?.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {dashboard.opportunityMeta.topDrivers.slice(0, 3).map((driver) => (
-                    <span
-                      key={driver}
-                      className="rounded-full border border-slate-700/60 px-2 py-0.5 text-slate-200"
-                    >
-                      {driver}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+        {dashboard.opportunityMeta.scoringNotes ? (
+          <span className="text-slate-400">{dashboard.opportunityMeta.scoringNotes}</span>
+        ) : null}
+        {dashboard.opportunityMeta.topDrivers?.length ? (
+          <div className="flex flex-wrap gap-2">
+            {dashboard.opportunityMeta.topDrivers.slice(0, 3).map((driver) => (
+              <span
+                key={driver}
+                className="rounded-full border border-slate-700/60 px-2 py-0.5 text-slate-200"
+              >
+                {driver}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
           {dashboard.alerts.length ? (
@@ -441,6 +440,7 @@ export function DashboardPage() {
           ))}
         </div>
       </section>
+      <DashboardCharts dashboard={dashboard} filters={filters} />
     </div>
   )
 }
