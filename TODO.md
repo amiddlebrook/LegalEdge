@@ -20,7 +20,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 ## Backend Platform
 - [ ] Replace stub repositories with full SQLAlchemy models, migrations, CRUD, and caching layers.
 - [x] Add OAuth 2.0 authentication, role-based access, rate limiting, audit logging, and polished OpenAPI documentation.
-- [ ] Stand up background workers (Celery/Prefect) for ingestion, enrichment, retraining, and scheduled snapshots.
+- [x] Stand up background workers (Celery/Prefect) for ingestion, enrichment, retraining, and scheduled snapshots.
 
 ## Frontend Experience
 - [ ] Enrich dashboard with live charts/visualizations, coverage heatmaps, and legislation timelines.

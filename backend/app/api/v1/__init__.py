@@ -13,6 +13,7 @@ from . import (
     routes_opportunities,
     routes_portfolios,
     routes_overview,
+    routes_tasks,
 )
 
 
@@ -28,3 +29,4 @@ router.include_router(routes_opportunities.router)
 router.include_router(routes_alerts.router)
 router.include_router(routes_entity_resolution.router)
 router.include_router(routes_auth.router)
+router.include_router(routes_tasks.router)

@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     model_retrain_schedule_minutes: int = 360
     forecast_retrain_schedule_minutes: int = 240
     openai_api_key: str | None = None
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+    worker_concurrency: int = 4
 
     model_config = SettingsConfigDict(
         env_file=".env",

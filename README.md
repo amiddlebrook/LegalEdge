@@ -25,10 +25,62 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev
+## Background Workers
+
+LegalEdge uses Celery for robust background task processing with Redis as the message broker.
+
+### Setup
+
+1. **Using Docker Compose** (Recommended):
+```bash
+docker-compose up postgres redis
 ```
 
-## Next steps
+2. **Manual Setup**:
+```bash
+# Start Redis
+redis-server
+
+# Start PostgreSQL (if not using Docker)
+# Configure your PostgreSQL instance with the connection string in .env
+```
+
+### Running Workers
+
+```bash
+# Run Celery worker
+python -m app.workers.cli worker
+
+# Run Celery beat scheduler
+python -m app.workers.cli beat
+
+# Run Flower monitoring interface
+python -m app.workers.cli flower
+
+# Run specific tasks manually
+python -m app.workers.cli task ingestion
+```
+
+### Scheduled Tasks
+
+- **Ingestion**: Runs every 6 hours to fetch legislative data
+- **Model Retraining**: Legislation models every 12 hours, forecasting models every 6 hours
+- **Alert Processing**: Processes pending alerts every 5 minutes
+- **Data Cleanup**: Cleans old audit logs daily at 2 AM
+- **Market Snapshots**: Generates market analysis every 2 hours
+
+### Task Management API
+
+- `GET /api/v1/tasks/status` - Get worker queue status
+- `POST /api/v1/tasks/ingestion/run` - Manually trigger ingestion
+- `GET /api/v1/tasks/ingestion/history` - Get ingestion task history
+- `POST /api/v1/tasks/models/retrain/legislation` - Retrain legislation models
+- `POST /api/v1/tasks/models/retrain/forecasting` - Retrain forecasting models
+- `GET /api/v1/tasks/scheduled` - Get scheduled tasks information
+
+### Monitoring
+
+Access Flower monitoring interface at `http://localhost:5555` when running with Docker Compose.
 
 1. Connect external data sources (congress.gov, SEC, state portals) to replace stub services.
 2. Implement transformer-based NLP pipelines for legislation analysis and forecasting accuracy targets.
