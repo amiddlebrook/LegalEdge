@@ -750,21 +750,317 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "memory_utilization" {
-  alarm_name          = "${local.name_prefix}-memory-utilization"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "MemoryUtilization"
-  namespace           = "AWS/ECS"
-  period              = "300"
-  statistic           = "Average"
-  threshold           = "80"
+# Cost Monitoring and Budgeting
+resource "aws_budgets_budget" "monthly_cost" {
+  name              = "${local.name_prefix}-monthly-budget"
+  budget_type       = "COST"
+  limit_amount      = var.monthly_budget
+  limit_unit        = "USD"
+  time_unit         = "MONTHLY"
+  time_period_start = "2024-01-01_00:00"
 
-  alarm_description = "This metric monitors ECS memory utilization"
-  alarm_actions     = var.alarm_actions
+  notification {
+    comparison_operator = "GREATER_THAN"
+    threshold          = 80
+    threshold_type     = "PERCENTAGE"
+    notification_type  = "ACTUAL"
+
+    subscriber_email_addresses = var.budget_alert_emails
+  }
+
+  notification {
+    comparison_operator = "GREATER_THAN"
+    threshold          = 90
+    threshold_type     = "PERCENTAGE"
+    notification_type  = "ACTUAL"
+
+    subscriber_email_addresses = var.budget_alert_emails
+  }
+
+  notification {
+    comparison_operator = "GREATER_THAN"
+    threshold          = 100
+    threshold_type     = "PERCENTAGE"
+    notification_type  = "ACTUAL"
+
+    subscriber_email_addresses = var.budget_alert_emails
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "rds_cost_alarm" {
+  alarm_name          = "${local.name_prefix}-rds-cost-alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "EstimatedCharges"
+  namespace           = "AWS/Billing"
+  period              = "21600"  # 6 hours
+  statistic           = "Maximum"
+  threshold           = "100"  # $100 threshold
+  alarm_description   = "RDS costs have exceeded $100 in 6 hours"
 
   dimensions = {
-    ServiceName = aws_ecs_service.app.name
-    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = "AmazonRDS"
   }
+
+  alarm_actions = var.alarm_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_cost_alarm" {
+  alarm_name          = "${local.name_prefix}-ecs-cost-alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "EstimatedCharges"
+  namespace           = "AWS/Billing"
+  period              = "21600"  # 6 hours
+  statistic           = "Maximum"
+  threshold           = "80"   # $80 threshold
+  alarm_description   = "ECS costs have exceeded $80 in 6 hours"
+
+  dimensions = {
+    ServiceName = "AmazonECS"
+  }
+
+  alarm_actions = var.alarm_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "s3_cost_alarm" {
+  alarm_name          = "${local.name_prefix}-s3-cost-alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "EstimatedCharges"
+  namespace           = "AWS/Billing"
+  period              = "21600"  # 6 hours
+  statistic           = "Maximum"
+  threshold           = "50"   # $50 threshold
+  alarm_description   = "S3 costs have exceeded $50 in 6 hours"
+
+  dimensions = {
+    ServiceName = "AmazonS3"
+  }
+
+  alarm_actions = var.alarm_actions
+}
+
+# Data Retention and Lifecycle Configuration
+resource "aws_s3_bucket_lifecycle_configuration" "cost_optimized_data_storage" {
+  bucket = aws_s3_bucket.data_storage.id
+
+  rule {
+    id     = "data-retention-policy"
+    status = "Enabled"
+
+    # Archive to Glacier after 90 days
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    # Delete after 7 years
+    expiration {
+      days = 2555  # 7 years
+    }
+
+    # Clean up incomplete multipart uploads
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  rule {
+    id     = "log-files-lifecycle"
+    status = "Enabled"
+
+    filter {
+      prefix = "logs/"
+    }
+
+    # Transition to IA after 30 days
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    # Archive to Glacier after 90 days
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    # Delete after 1 year
+    expiration {
+      days = 365
+    }
+  }
+}
+
+# RDS Automated Backup Configuration
+resource "aws_backup_plan" "legaledge_backup" {
+  name = "${local.name_prefix}-backup-plan"
+
+  rule {
+    rule_name         = "daily_backup"
+    target_vault_name = aws_backup_vault.legaledge_backup.name
+    schedule          = "cron(0 2 * * ? *)"  # Daily at 2 AM UTC
+
+    lifecycle {
+      delete_after = 30  # Delete after 30 days
+    }
+  }
+
+  rule {
+    rule_name         = "weekly_backup"
+    target_vault_name = aws_backup_vault.legaledge_backup.name
+    schedule          = "cron(0 2 ? * SUN *)"  # Weekly on Sunday at 2 AM UTC
+
+    lifecycle {
+      delete_after = 365  # Keep for 1 year
+    }
+  }
+}
+
+resource "aws_backup_vault" "legaledge_backup" {
+  name        = "${local.name_prefix}-backup-vault"
+  kms_key_arn = aws_kms_key.database.arn
+
+  tags = {
+    Name = "${local.name_prefix}-backup-vault"
+  }
+}
+
+resource "aws_backup_selection" "legaledge_rds_backup" {
+  iam_role_arn = aws_iam_role.backup_role.arn
+  name         = "${local.name_prefix}-rds-backup-selection"
+  plan_id      = aws_backup_plan.legaledge_backup.id
+
+  selection_tag {
+    type  = "STRINGEQUALS"
+    key   = "Backup"
+    value = "true"
+  }
+}
+
+resource "aws_iam_role" "backup_role" {
+  name = "${local.name_prefix}-backup-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "backup.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+  ]
+}
+
+# CloudWatch Dashboard for Cost Monitoring
+resource "aws_cloudwatch_dashboard" "cost_monitoring" {
+  dashboard_name = "${local.name_prefix}-cost-monitoring"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        x = 0
+        y = 0
+        width = 12
+        height = 6
+        properties = {
+          view = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/Billing", "EstimatedCharges", "Currency", "USD"]
+          ]
+          region = var.aws_region
+          title = "Total AWS Costs"
+          period = 86400
+          stat = "Maximum"
+        }
+      },
+      {
+        type = "metric"
+        x = 12
+        y = 0
+        width = 12
+        height = 6
+        properties = {
+          view = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonRDS", "Currency", "USD"],
+            [".", "EstimatedCharges", "ServiceName", "AmazonECS", "Currency", "USD"],
+            [".", "EstimatedCharges", "ServiceName", "AmazonS3", "Currency", "USD"],
+            [".", "EstimatedCharges", "ServiceName", "AmazonCloudFront", "Currency", "USD"]
+          ]
+          region = var.aws_region
+          title = "Cost by Service"
+          period = 86400
+          stat = "Maximum"
+        }
+      },
+      {
+        type = "metric"
+        x = 0
+        y = 6
+        width = 12
+        height = 6
+        properties = {
+          view = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${aws_db_instance.database.identifier}"],
+            [".", "CPUUtilization", ".", "."],
+            [".", "FreeStorageSpace", ".", "."]
+          ]
+          region = var.aws_region
+          title = "Database Performance"
+          period = 300
+          stat = "Average"
+        }
+      },
+      {
+        type = "metric"
+        x = 12
+        y = 6
+        width = 12
+        height = 6
+        properties = {
+          view = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", "${aws_ecs_service.app.name}", "ClusterName", "${aws_ecs_cluster.main.name}"],
+            [".", "MemoryUtilization", ".", ".", ".", "."]
+          ]
+          region = var.aws_region
+          title = "ECS Service Utilization"
+          period = 300
+          stat = "Average"
+        }
+      }
+    ]
+  })
+}
+
+# SNS Topic for Cost Alerts
+resource "aws_sns_topic" "cost_alerts" {
+  name = "${local.name_prefix}-cost-alerts"
+
+  tags = {
+    Name = "${local.name_prefix}-cost-alerts"
+  }
+}
+
+resource "aws_sns_topic_subscription" "cost_alert_email" {
+  for_each = toset(var.budget_alert_emails)
+
+  topic_arn = aws_sns_topic.cost_alerts.arn
+  protocol  = "email"
+  endpoint  = each.value
 }

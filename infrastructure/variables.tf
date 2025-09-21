@@ -87,6 +87,84 @@ variable "alarm_actions" {
   default     = []
 }
 
+variable "monthly_budget" {
+  description = "Monthly AWS budget in USD"
+  type        = number
+  default     = 500
+}
+
+variable "budget_alert_emails" {
+  description = "Email addresses for budget alerts"
+  type        = list(string)
+  default     = []
+}
+
+variable "backup_retention_days" {
+  description = "Number of days to retain backups"
+  type        = number
+  default     = 30
+}
+
+variable "data_retention_days" {
+  description = "Number of days to retain data before archiving"
+  type        = number
+  default     = 2555  # 7 years
+}
+
+variable "log_retention_days" {
+  description = "Number of days to retain log files"
+  type        = number
+  default     = 365
+}
+
+variable "enable_backup_encryption" {
+  description = "Enable encryption for backups"
+  type        = bool
+  default     = true
+}
+
+variable "cost_optimization_enabled" {
+  description = "Enable cost optimization features"
+  type        = bool
+  default     = true
+}
+
+variable "rds_cost_threshold" {
+  description = "RDS cost threshold in USD per 6-hour period"
+  type        = number
+  default     = 100
+}
+
+variable "ecs_cost_threshold" {
+  description = "ECS cost threshold in USD per 6-hour period"
+  type        = number
+  default     = 80
+}
+
+variable "s3_cost_threshold" {
+  description = "S3 cost threshold in USD per 6-hour period"
+  type        = number
+  default     = 50
+}
+
+variable "legislative_data_retention_years" {
+  description = "Years to retain legislative data"
+  type        = number
+  default     = 7
+}
+
+variable "trade_data_retention_years" {
+  description = "Years to retain trade disclosure data"
+  type        = number
+  default     = 10
+}
+
+variable "audit_log_retention_years" {
+  description = "Years to retain audit logs"
+  type        = number
+  default     = 7
+}
+
 # Environment-specific configurations
 locals {
   # Database configuration
@@ -133,10 +211,24 @@ locals {
       task_cpu = 512
       task_memory = 1024
     }
+  # Cost and backup configuration
+  cost_backup_config = {
+    development = {
+      monthly_budget = 500
+      backup_retention_days = 7
+      data_retention_days = 365
+      enable_backup_encryption = true
+    }
+    staging = {
+      monthly_budget = 1000
+      backup_retention_days = 30
+      data_retention_days = 1825  # 5 years
+      enable_backup_encryption = true
+    }
     production = {
-      desired_count = 3
-      task_cpu = 1024
-      task_memory = 2048
+      monthly_budget = 5000
+      backup_retention_days = 90
+      data_retention_days = 2555  # 7 years
+      enable_backup_encryption = true
     }
   }
-}
