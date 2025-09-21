@@ -34,11 +34,11 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## Security & Compliance
 - [x] Enforce encryption at rest/in transit, secrets rotation, vulnerability scanning, and dependency governance.
-- [ ] Implement SOC2-aligned controls: change management, access reviews, incident response, and logging.
-- [ ] Build privacy/compliance tooling for jurisdictional regulations and client data segregation.
+- [x] Implement SOC2-aligned controls: change management, access reviews, incident response, and logging.
+- [x] Build privacy/compliance tooling for jurisdictional regulations and client data segregation.
 
 ## Quality & Go-To-Market Readiness
-- [ ] Expand automated tests (unit/integration/e2e), load tests for ingestion/alerts, and ML evaluation harnesses.
+- [x] Expand automated tests (unit/integration/e2e), load tests for ingestion/alerts, and ML evaluation harnesses.
 - [ ] Produce client-facing documentation, onboarding flows, pricing/billing integration, and support playbooks.
 - [ ] Add feedback loops (in-app telemetry, surveys) and plan iterative release cadence post-launch.
 
