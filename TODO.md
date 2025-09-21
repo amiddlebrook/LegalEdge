@@ -18,7 +18,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 - [x] Expand portfolio dashboards with drilldowns (member history, bill timelines, watchlists) and exportable reports.
 
 ## Backend Platform
-- [ ] Replace stub repositories with full SQLAlchemy models, migrations, CRUD, and caching layers.
+- [x] Replace stub repositories with full SQLAlchemy models, migrations, CRUD, and caching layers.
 - [x] Add OAuth 2.0 authentication, role-based access, rate limiting, audit logging, and polished OpenAPI documentation.
 - [x] Stand up background workers (Celery/Prefect) for ingestion, enrichment, retraining, and scheduled snapshots.
 
@@ -29,11 +29,11 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## Infrastructure & Operations
 - [x] Provision AWS infrastructure (VPC, ECS/Lambda, RDS, S3, CloudFront) via Terraform with automated deploys.
-- [ ] Configure CI/CD with tests, linting, security scans, and observability (metrics, tracing, logging).
-- [ ] Establish disaster recovery playbooks, data retention policies, and cost monitoring.
+- [x] Configure CI/CD with tests, linting, security scans, and observability (metrics, tracing, logging).
+- [x] Establish disaster recovery playbooks, data retention policies, and cost monitoring.
 
 ## Security & Compliance
-- [ ] Enforce encryption at rest/in transit, secrets rotation, vulnerability scanning, and dependency governance.
+- [x] Enforce encryption at rest/in transit, secrets rotation, vulnerability scanning, and dependency governance.
 - [ ] Implement SOC2-aligned controls: change management, access reviews, incident response, and logging.
 - [ ] Build privacy/compliance tooling for jurisdictional regulations and client data segregation.
 
