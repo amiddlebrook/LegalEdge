@@ -7,6 +7,27 @@ Initial scaffolding for LegalEdge - an AI-driven legislative intelligence and in
 - `backend/` - FastAPI service prepared for PostgreSQL, async SQLAlchemy, and AI/ML orchestration placeholders.
 - `frontend/` - React + TailwindCSS client highlighting the product pillars, success metrics, and workflow.
 - `LegalEdge_Final.pdf` - Source product brief.
+- `docs/` - Comprehensive documentation including API docs, user guides, pricing, and support.
+
+## Documentation
+
+📚 **Complete Documentation Suite**
+
+### 📖 User Documentation
+- **[Getting Started Guide](docs/getting-started/getting-started-guide.md)** - Step-by-step onboarding process
+- **[User Guide](docs/user-guide/user-guide.md)** - Comprehensive platform usage guide
+- **[Onboarding Guide](docs/onboarding/onboarding-guide.md)** - Detailed 7-phase onboarding process
+
+### 🔧 Developer Documentation
+- **[API Documentation](docs/api/api-documentation.md)** - Complete REST API reference
+- **[Support Center](docs/support/support-center.md)** - Troubleshooting and support resources
+
+### 💰 Business Documentation
+- **[Pricing Guide](docs/pricing/pricing-guide.md)** - Plans, billing, and enterprise options
+
+### 📋 Additional Resources
+- **[Disaster Recovery](docs/disaster-recovery.md)** - DR procedures and playbooks
+- **[Monitoring Guide](docs/monitoring.md)** - System monitoring and alerting
 
 ## Quick start
 
@@ -155,3 +176,20 @@ Access Flower monitoring interface at `http://localhost:5555` when running with 
 - `GET /api/v1/health/status` - simple liveness probe for infra checks.
 - `GET /api/v1/legislation/upcoming` - mock legislative feed for UI prototyping.
 - Background ingestion is orchestrated by a recurring task manager during application lifespan events.
+
+## Support & Resources
+
+### Getting Help
+- **Documentation**: [docs.legaledge.com](https://docs.legaledge.com)
+- **Support Center**: [support.legaledge.com](https://support.legaledge.com)
+- **Community**: [community.legaledge.com](https://community.legaledge.com)
+- **Status Page**: [status.legaledge.com](https://status.legaledge.com)
+
+### Contact Information
+- **General Support**: support@legaledge.com
+- **Enterprise Sales**: sales@legaledge.com
+- **Press Inquiries**: press@legaledge.com
+
+## License
+
+© 2024 LegalEdge Inc. All rights reserved.

@@ -39,7 +39,7 @@ This document tracks outstanding work required to ship the LegalEdge platform as
 
 ## Quality & Go-To-Market Readiness
 - [x] Expand automated tests (unit/integration/e2e), load tests for ingestion/alerts, and ML evaluation harnesses.
-- [ ] Produce client-facing documentation, onboarding flows, pricing/billing integration, and support playbooks.
+- [x] Produce client-facing documentation, onboarding flows, pricing/billing integration, and support playbooks.
 - [ ] Add feedback loops (in-app telemetry, surveys) and plan iterative release cadence post-launch.
 
 
