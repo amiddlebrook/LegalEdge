@@ -1,0 +1,92 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "view": "timeSeries",
+        "stacked": false,
+        "metrics": [
+          ["AWS/ECS", "CPUUtilization", "ServiceName", "legaledge-production-app", "ClusterName", "legaledge-production-cluster"],
+          [".", "MemoryUtilization", ".", ".", ".", "."]
+        ],
+        "region": "us-east-1",
+        "title": "ECS Service Resource Utilization",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "view": "timeSeries",
+        "stacked": false,
+        "metrics": [
+          ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "app/legaledge-production-alb/*"],
+          [".", "TargetResponseTime", ".", ".", ".", "."]
+        ],
+        "region": "us-east-1",
+        "title": "Application Load Balancer Metrics",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "view": "timeSeries",
+        "stacked": false,
+        "metrics": [
+          ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "legaledge-production-db"],
+          [".", "CPUUtilization", ".", "."],
+          [".", "ReadIOPS", ".", "."],
+          [".", "WriteIOPS", ".", "."]
+        ],
+        "region": "us-east-1",
+        "title": "Database Performance",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "view": "timeSeries",
+        "stacked": false,
+        "metrics": [
+          ["AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "legaledge-production-redis"],
+          [".", "DatabaseMemoryUsagePercentage", ".", "."],
+          [".", "CurrConnections", ".", "."]
+        ],
+        "region": "us-east-1",
+        "title": "Redis Cache Performance",
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 12,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "query": "SOURCE 'legaledge-production-app'\n| fields @timestamp, @message, level, logger\n| filter level in ['ERROR', 'CRITICAL', 'WARNING']\n| sort @timestamp desc\n| limit 100",
+        "region": "us-east-1",
+        "title": "Recent Application Errors",
+        "stacked": false
+      }
+    }
+  ]
+}

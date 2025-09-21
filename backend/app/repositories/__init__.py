@@ -1,13 +1,88 @@
 """Repository helpers for persistence access."""
-from app.repositories.forecast import list_sector_forecast
-from app.repositories.insights import list_alerts, list_opportunities
-from app.repositories.legislation import list_upcoming_legislation
-from app.repositories.portfolio import list_recent_trades
+from app.repositories.forecast import (
+    list_sector_forecast,
+    get_forecast_signal,
+    get_forecast_signals_by_ticker,
+    create_forecast_signal,
+    update_forecast_signal,
+    delete_forecast_signal,
+    bulk_upsert_forecast_signals,
+    get_latest_forecast_date,
+    get_forecast_stats,
+)
+from app.repositories.insights import (
+    list_alerts,
+    list_opportunities,
+    get_alert_subscription,
+    list_alert_subscriptions,
+    get_policy_alert_by_key,
+)
+from app.repositories.legislation import (
+    list_upcoming_legislation,
+    get_legislative_bill,
+    get_legislative_bills_by_sector,
+    create_legislative_bill,
+    update_legislative_bill,
+    delete_legislative_bill,
+    bulk_upsert_legislative_bills,
+    get_legislative_bill_versions,
+    create_legislative_bill_version,
+    get_legislation_stats,
+)
+from app.repositories.portfolio import (
+    list_recent_trades,
+    list_trade_disclosures_with_bills,
+    get_trade_disclosure,
+    get_trade_disclosure_by_key,
+    create_trade_disclosure,
+    update_trade_disclosure,
+    delete_trade_disclosure,
+    bulk_upsert_trade_disclosures,
+    get_trades_by_member,
+    get_trades_by_ticker,
+    get_portfolio_conflicts,
+    get_trade_stats,
+)
 
 __all__ = [
+    # Legislation
     "list_upcoming_legislation",
+    "get_legislative_bill",
+    "get_legislative_bills_by_sector",
+    "create_legislative_bill",
+    "update_legislative_bill",
+    "delete_legislative_bill",
+    "bulk_upsert_legislative_bills",
+    "get_legislative_bill_versions",
+    "create_legislative_bill_version",
+    "get_legislation_stats",
+    # Forecast
     "list_sector_forecast",
+    "get_forecast_signal",
+    "get_forecast_signals_by_ticker",
+    "create_forecast_signal",
+    "update_forecast_signal",
+    "delete_forecast_signal",
+    "bulk_upsert_forecast_signals",
+    "get_latest_forecast_date",
+    "get_forecast_stats",
+    # Portfolio
     "list_recent_trades",
+    "list_trade_disclosures_with_bills",
+    "get_trade_disclosure",
+    "get_trade_disclosure_by_key",
+    "create_trade_disclosure",
+    "update_trade_disclosure",
+    "delete_trade_disclosure",
+    "bulk_upsert_trade_disclosures",
+    "get_trades_by_member",
+    "get_trades_by_ticker",
+    "get_portfolio_conflicts",
+    "get_trade_stats",
+    # Insights/Alerts
     "list_alerts",
     "list_opportunities",
+    "get_alert_subscription",
+    "list_alert_subscriptions",
+    "get_policy_alert_by_key",
 ]

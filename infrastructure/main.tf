@@ -144,12 +144,61 @@ resource "aws_security_group" "redis" {
 # RDS PostgreSQL Database
 resource "random_password" "db_password" {
   length  = 32
-  special = true
 }
 
+# KMS Keys for Encryption
+resource "aws_kms_key" "database" {
+  description             = "KMS key for RDS encryption"
+  deletion_window_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${local.name_prefix}-db-key"
+  }
+}
+
+resource "aws_kms_alias" "database" {
+  name          = "alias/${local.name_prefix}-db"
+  target_key_id = aws_kms_key.database.key_id
+}
+
+resource "aws_kms_key" "secrets" {
+  description             = "KMS key for secrets encryption"
+  deletion_window_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${local.name_prefix}-secrets-key"
+  }
+}
+
+resource "aws_kms_alias" "secrets" {
+  name          = "alias/${local.name_prefix}-secrets"
+  target_key_id = aws_kms_key.secrets.key_id
+}
+
+resource "aws_kms_key" "s3" {
+  description             = "KMS key for S3 bucket encryption"
+  deletion_window_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${local.name_prefix}-s3-key"
+  }
+}
+
+resource "aws_kms_alias" "s3" {
+  name          = "alias/${local.name_prefix}-s3"
+  target_key_id = aws_kms_key.s3.key_id
+}
+
+# Secrets Manager with encryption
 resource "aws_secretsmanager_secret" "db_password" {
-  name = "${local.name_prefix}-db-password"
-  description = "Database password for LegalEdge"
+  name                    = "${local.name_prefix}-db-password"
+  description             = "Database password for LegalEdge"
+  kms_key_id              = aws_kms_key.secrets.arn
+  recovery_window_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${local.name_prefix}-db-password"
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -160,17 +209,7 @@ resource "aws_secretsmanager_secret_version" "db_password" {
   })
 }
 
-resource "aws_db_subnet_group" "database" {
-  name       = "${local.name_prefix}-db-subnet-group"
-  subnet_ids = module.vpc.private_subnets
-
-  tags = {
-    Name = "${local.name_prefix}-db-subnet-group"
-  }
-}
-
-resource "aws_db_parameter_group" "database" {
-  family = "postgres15"
+# RDS Database with enhanced encryption
   name   = "${local.name_prefix}-db-params"
 
   parameter {
@@ -199,6 +238,7 @@ resource "aws_db_instance" "database" {
   allocated_storage     = 20
   max_allocated_storage = 100
   storage_encrypted     = true
+  kms_key_id           = aws_kms_key.database.arn
 
   db_name  = "legaledge"
   username = "postgres"
@@ -251,7 +291,7 @@ resource "aws_elasticache_cluster" "redis" {
   }
 }
 
-# S3 Buckets
+# S3 Buckets with encryption
 resource "aws_s3_bucket" "app_assets" {
   bucket = "${local.name_prefix}-app-assets"
 
@@ -260,11 +300,71 @@ resource "aws_s3_bucket" "app_assets" {
   }
 }
 
+resource "aws_s3_bucket_server_side_encryption_configuration" "app_assets" {
+  bucket = aws_s3_bucket.app_assets.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.s3.arn
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
 resource "aws_s3_bucket" "data_storage" {
   bucket = "${local.name_prefix}-data-storage"
 
   tags = {
     Name = "${local.name_prefix}-data-storage"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "data_storage" {
+  bucket = aws_s3_bucket.data_storage.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.s3.arn
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "app_assets" {
+  bucket = aws_s3_bucket.app_assets.id
+  versioning_configuration {
+    status = var.environment == "production" ? "Enabled" : "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "data_storage" {
+  bucket = aws_s3_bucket.data_storage.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# S3 bucket lifecycle policies
+resource "aws_s3_bucket_lifecycle_configuration" "app_assets" {
+  bucket = aws_s3_bucket.app_assets.id
+
+  rule {
+    id     = "transition-to-ia"
+    status = "Enabled"
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365
+    }
   }
 }
 
