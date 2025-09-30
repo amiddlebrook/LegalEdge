@@ -1,0 +1,50 @@
+# LegalEdge Production Terraform Variables
+# Copy this file to terraform.tfvars and customize with your actual values
+
+# AWS Configuration
+aws_region = "us-east-1"
+environment = "production"
+
+# Domain and SSL Configuration
+# Replace with your actual domain and SSL certificate ARN
+domain_name = "api.legaledge.com"
+ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# DNS Configuration (Optional - leave empty if not using Route 53)
+create_route53_record = true
+route53_zone_id = "Z1234567890ABC"  # Get this from Route 53 hosted zone
+
+# Cost and Budget Configuration
+monthly_budget = 2000
+budget_alert_emails = [
+    "admin@legaledge.com",
+    "devops@legaledge.com",
+    "engineering@legaledge.com"
+]
+
+# Alerting Configuration
+alarm_actions = [
+    "arn:aws:sns:us-east-1:123456789012:legaledge-alerts"
+]
+
+# Docker Image Configuration
+app_image = "your-registry/legaledge-app:latest"
+
+# Database Configuration (Optional - override defaults)
+# db_instance_class = "db.t3.medium"
+# redis_node_type = "cache.t3.medium"
+
+# ECS Configuration (Optional - override defaults)
+# desired_count = 3
+# task_cpu = 512
+# task_memory = 1024
+
+# Data Retention (Optional - override defaults)
+# legislative_data_retention_years = 7
+# trade_data_retention_years = 10
+# audit_log_retention_years = 7
+
+# Cost Optimization (Optional - override defaults)
+# rds_cost_threshold = 150
+# ecs_cost_threshold = 120
+# s3_cost_threshold = 75

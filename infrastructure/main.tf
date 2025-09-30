@@ -720,6 +720,35 @@ resource "aws_lb_listener" "app_http" {
   }
 }
 
+# Route 53 Records (optional)
+resource "aws_route53_record" "app" {
+  count   = var.create_route53_record && var.domain_name != "" ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.app.dns_name
+    zone_id                = aws_lb.app.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# Route 53 Health Check (optional)
+resource "aws_route53_health_check" "app" {
+  count             = var.create_route53_record && var.domain_name != "" ? 1 : 0
+  fqdn              = var.domain_name
+  port              = 443
+  type              = "HTTPS"
+  resource_path     = "/api/v1/health/status"
+  failure_threshold = "3"
+  request_interval  = "30"
+
+  tags = {
+    Name = "${local.name_prefix}-health-check"
+  }
+}
+
 # CloudWatch Logs
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${local.name_prefix}-app"

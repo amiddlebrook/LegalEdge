@@ -75,8 +75,20 @@ variable "app_image" {
   default     = "legaledge-app:latest"
 }
 
-variable "ssl_certificate_arn" {
-  description = "SSL certificate ARN for HTTPS"
+variable "domain_name" {
+  description = "Domain name for the application (e.g., api.legaledge.com)"
+  type        = string
+  default     = ""
+}
+
+variable "create_route53_record" {
+  description = "Whether to create Route 53 records for the domain"
+  type        = bool
+  default     = false
+}
+
+variable "route53_zone_id" {
+  description = "Route 53 hosted zone ID (required if create_route53_record is true)"
   type        = string
   default     = ""
 }

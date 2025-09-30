@@ -196,7 +196,8 @@ locust -f tests/load/
 - **[Support Center](docs/support/support-center.md)** - Troubleshooting and support resources
 
 ### 💰 Business Documentation
-- **[Pricing Guide](docs/pricing/pricing-guide.md)** - Plans, billing, and enterprise options
+- **[Pricing Guide](docs/pricing/pricing-guide.md)** - User subscription plans and billing
+- **[Developer Cost Guide](docs/pricing/developer-cost-guide.md)** - Infrastructure and operational costs for deploying LegalEdge
 
 ### 📋 Additional Resources
 - **[Disaster Recovery](docs/disaster-recovery.md)** - DR procedures and playbooks
