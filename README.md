@@ -198,8 +198,13 @@ locust -f tests/load/
 ### 💰 Business Documentation
 - **[Pricing Guide](docs/pricing/pricing-guide.md)** - User subscription plans and billing
 - **[Developer Cost Guide](docs/pricing/developer-cost-guide.md)** - Infrastructure and operational costs for deploying LegalEdge
+- **[Quick Start Cost Guide](docs/pricing/QUICKSTART_COST_GUIDE.md)** - Business-focused cost overview and quick start
 
 ### 📋 Additional Resources
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Complete deployment instructions
+- **[Production Deployment](docs/deployment/PRODUCTION_DEPLOYMENT.md)** - Production environment setup
+- **[Deployment Checklist](docs/deployment/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
+- **[Setup Guides](docs/setup/)** - API setup, secrets management, and configuration
 - **[Disaster Recovery](docs/disaster-recovery.md)** - DR procedures and playbooks
 - **[Monitoring Guide](docs/monitoring.md)** - System monitoring and alerting
 
