@@ -193,6 +193,7 @@ locust -f tests/load/
 - **[API Documentation](docs/api/api-documentation.md)** - Complete REST API reference
 - **[Backend README](backend/README.md)** - Backend development guide
 - **[Frontend README](frontend/README.md)** - Frontend development guide
+- **[Launch Instructions](docs/deployment/LAUNCH_INSTRUCTIONS.md)** - Complete production launch guide
 - **[Support Center](docs/support/support-center.md)** - Troubleshooting and support resources
 
 ### 💰 Business Documentation
