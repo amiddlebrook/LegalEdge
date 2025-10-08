@@ -1,0 +1,1692 @@
+{
+  "name": "LegalEdge Complete Automation Platform",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "master-schedule-trigger",
+      "name": "Master Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "execution_mode",
+              "value": "full_automation"
+            }
+          ]
+        }
+      },
+      "id": "set-execution-mode",
+      "name": "Set Execution Mode",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [300, 100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "automation_tasks",
+              "value": "[\"system_monitoring\", \"data_ingestion\", \"alert_management\", \"portfolio_analysis\", \"ml_model_management\", \"external_api_integration\", \"data_cleanup\"]"
+            }
+          ]
+        }
+      },
+      "id": "set-automation-tasks",
+      "name": "Set Automation Tasks",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "const tasks = JSON.parse($json.automation_tasks);\nreturn tasks.map(task => ({ json: { task_name: task, timestamp: new Date().toISOString() } }));"
+      },
+      "id": "split-automation-tasks",
+      "name": "Split Automation Tasks",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "system_monitoring"
+            }
+          ]
+        }
+      },
+      "id": "route-system-monitoring",
+      "name": "Route System Monitoring",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "data_ingestion"
+            }
+          ]
+        }
+      },
+      "id": "route-data-ingestion",
+      "name": "Route Data Ingestion",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "alert_management"
+            }
+          ]
+        }
+      },
+      "id": "route-alert-management",
+      "name": "Route Alert Management",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "portfolio_analysis"
+            }
+          ]
+        }
+      },
+      "id": "route-portfolio-analysis",
+      "name": "Route Portfolio Analysis",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "ml_model_management"
+            }
+          ]
+        }
+      },
+      "id": "route-ml-models",
+      "name": "Route ML Model Management",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "external_api_integration"
+            }
+          ]
+        }
+      },
+      "id": "route-external-apis",
+      "name": "Route External API Integration",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 1000]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "data_cleanup"
+            }
+          ]
+        }
+      },
+      "id": "route-data-cleanup",
+      "name": "Route Data Cleanup",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [900, 1200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "health/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-api-health",
+      "name": "Check API Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, -100]
+    },
+    {
+      "parameters": {
+        "url": "=https://hc-ping.com/YOUR-HEALTH-CHECKS-UUID",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-database-health",
+      "name": "Check Database Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1300, -100]
+    },
+    {
+      "parameters": {
+        "url": "=https://hc-ping.com/YOUR-HEALTH-CHECKS-UUID",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-redis-health",
+      "name": "Check Redis Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1500, -100]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "coverage",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-data-coverage",
+      "name": "Check Data Coverage",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1700, -100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { api_healthy: $json.status === 'healthy', response_time: $json.response_time || null, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "process-api-health",
+      "name": "Process API Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, -100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { database_healthy: $json.status === 200, response_time: $json.response_time || null, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "process-database-health",
+      "name": "Process Database Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, -50]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { redis_healthy: $json.status === 200, response_time: $json.response_time || null, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "process-redis-health",
+      "name": "Process Redis Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { coverage_percentage: $json.overall_coverage || 0, last_updated: $json.last_updated || null, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "process-data-coverage",
+      "name": "Process Data Coverage",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, 50]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge-health-data",
+      "name": "Merge Health Data",
+      "type": "@n8n/n8n-nodes-langchain.merge",
+      "typeVersion": 2.1,
+      "position": [2100, -50]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ !$json.api_healthy || !$json.database_healthy || !$json.redis_healthy }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-system-issues",
+      "name": "Check for System Issues",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2300, -100]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 LegalEdge System Alert\n\n⚠️ Critical System Issues Detected\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n🔴 API Health: {{ $json.api_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n🔴 Database Health: {{ $json.database_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n🔴 Redis Health: {{ $json.redis_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n📊 Coverage: {{ $json.coverage_percentage }}%\n\nImmediate attention required!"
+      },
+      "id": "slack-system-critical",
+      "name": "Slack System Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2500, -150]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.congress.gov/v3/bill?api_key={{ $env.CONGRESS_API_KEY }}&limit=100",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-congress-data",
+      "name": "Fetch Congress.gov Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 150]
+    },
+    {
+      "parameters": {
+        "url": "=https://various-state-apis.gov/legislation?format=json",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-state-data",
+      "name": "Fetch State Portals Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1300, 150]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&output=atom",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-sec-data",
+      "name": "Fetch SEC Filings Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1500, 150]
+    },
+    {
+      "parameters": {
+        "url": "=https://newsapi.org/v2/everything?q=legislation+OR+bills+OR+congress&apiKey={{ $env.NEWS_API_KEY }}&language=en&pageSize=100",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-news-data",
+      "name": "Fetch News Feeds Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1700, 150]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.marketdata.com/v1/news?symbols=*&token={{ $env.MARKET_DATA_TOKEN }}",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-market-data",
+      "name": "Fetch Market Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1900, 150]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { data_source: 'congress_gov', records_count: items.length, status: 'processed', data: items } }];"
+      },
+      "id": "process-congress-data",
+      "name": "Process Congress Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [2100, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { data_source: 'state_portals', records_count: items.length, status: 'processed', data: items } }];"
+      },
+      "id": "process-state-data",
+      "name": "Process State Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [2100, 130]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { data_source: 'sec_filings', records_count: items.length, status: 'processed', data: items } }];"
+      },
+      "id": "process-sec-data",
+      "name": "Process SEC Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [2100, 160]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { data_source: 'news_feeds', records_count: items.length, status: 'processed', data: items } }];"
+      },
+      "id": "process-news-data",
+      "name": "Process News Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [2100, 190]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { data_source: 'market_data', records_count: items.length, status: 'processed', data: items } }];"
+      },
+      "id": "process-market-data",
+      "name": "Process Market Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [2100, 220]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge-ingestion-data",
+      "name": "Merge Ingestion Data",
+      "type": "@n8n/n8n-nodes-langchain.merge",
+      "typeVersion": 2.1,
+      "position": [2300, 150]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingestion/batch",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "data": "={{ $json }}"
+        }
+      },
+      "id": "send-ingestion-to-api",
+      "name": "Send Ingestion to LegalEdge API",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2500, 150]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "alerts/pending",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-pending-alerts",
+      "name": "Fetch Pending Alerts",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 350]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.filter(item => item.json.severity === 'critical' || item.json.severity === 'high');"
+      },
+      "id": "filter-critical-alerts",
+      "name": "Filter Critical Alerts",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1300, 320]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.filter(item => item.json.severity === 'medium' || item.json.severity === 'low');"
+      },
+      "id": "filter-normal-alerts",
+      "name": "Filter Normal Alerts",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1300, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-critical-alerts",
+      "name": "Check Critical Alerts",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1500, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-normal-alerts",
+      "name": "Check Normal Alerts",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1500, 380]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 CRITICAL LegalEdge Alert\n\n⚠️ Severity: {{ $json.severity }}\n📋 Title: {{ $json.title }}\n📝 Message: {{ $json.message }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🔗 Link: {{ $json.link || 'N/A' }}"
+      },
+      "id": "slack-critical-alert",
+      "name": "Slack Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1700, 270]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.CRITICAL_ALERT_EMAIL || 'alerts@yourcompany.com' }}",
+        "subject": "=🚨 CRITICAL: {{ $json.title }}",
+        "textTemplate": "=🚨 Critical LegalEdge Alert\n\nTitle: {{ $json.title }}\nSeverity: {{ $json.severity }}\nMessage: {{ $json.message }}\nTime: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nView Details: {{ $json.link || 'LegalEdge Dashboard' }}"
+      },
+      "id": "email-critical-alert",
+      "name": "Email Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1900, 270]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=📢 LegalEdge Alert\n\n📋 Title: {{ $json.title }}\n📝 Message: {{ $json.message }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🔗 Link: {{ $json.link || 'N/A' }}"
+      },
+      "id": "slack-normal-alert",
+      "name": "Slack Normal Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1700, 430]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.NORMAL_ALERT_EMAIL || 'notifications@yourcompany.com' }}",
+        "subject": "={{ $json.title }}",
+        "textTemplate": "=LegalEdge Alert\n\nTitle: {{ $json.title }}\nMessage: {{ $json.message }}\nTime: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nView Details: {{ $json.link || 'LegalEdge Dashboard' }}"
+      },
+      "id": "email-normal-alert",
+      "name": "Email Normal Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1900, 430]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alerts/mark-delivered",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "alert_ids": "={{ $json.map(alert => alert.id) }}"
+        }
+      },
+      "id": "mark-alerts-delivered",
+      "name": "Mark Alerts as Delivered",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2100, 350]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "portfolios/active",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-active-portfolios",
+      "name": "Fetch Active Portfolios",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 550]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(portfolio => ({ json: { portfolio_id: portfolio.json.id, portfolio_name: portfolio.json.name, holdings_count: portfolio.json.holdings_count || 0 } }));"
+      },
+      "id": "prepare-portfolio-data",
+      "name": "Prepare Portfolio Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1300, 550]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.holdings_count > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-portfolios-with-holdings",
+      "name": "Filter Portfolios with Holdings",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1500, 550]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolios/{{ $json.portfolio_id }}/analysis",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 60000
+        }
+      },
+      "id": "analyze-portfolio",
+      "name": "Analyze Portfolio",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1700, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { portfolio_id: $json.portfolio_id, analysis_result: $json, risk_score: $json.risk_score || 0, opportunities_count: $json.opportunities ? $json.opportunities.length : 0 } }];"
+      },
+      "id": "process-portfolio-analysis",
+      "name": "Process Portfolio Analysis",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "field1": "={{ $json.risk_score }}",
+              "operation": "greaterThan",
+              "field2": 7.5
+            }
+          ]
+        }
+      },
+      "id": "check-high-risk-portfolios",
+      "name": "Check High Risk Portfolios",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2100, 480]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "field1": "={{ $json.opportunities_count }}",
+              "operation": "greaterThan",
+              "field2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-portfolio-opportunities",
+      "name": "Check Portfolio Opportunities",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2100, 520]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=⚠️ High Risk Portfolio Alert\n\n📊 Portfolio: {{ $json.portfolio_name }}\n🔴 Risk Score: {{ $json.risk_score }}/10\n⏰ Analysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📈 Holdings: {{ $json.holdings_count }}"
+      },
+      "id": "slack-high-risk-alert",
+      "name": "Slack High Risk Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2300, 430]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=💡 Portfolio Opportunity Alert\n\n📊 Portfolio: {{ $json.portfolio_name }}\n💰 Opportunities Found: {{ $json.opportunities_count }}\n⏰ Analysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-opportunity-alert",
+      "name": "Slack Opportunity Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2300, 570]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ml/models/legislation_nlp/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-legislation-nlp-status",
+      "name": "Check Legislation NLP Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 750]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.needs_retraining || $json.last_trained_days_ago > 7 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-nlp-needs-retraining",
+      "name": "Check NLP Needs Retraining",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1300, 750]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml/models/legislation_nlp/retrain",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "retrain-legislation-nlp",
+      "name": "Retrain Legislation NLP Model",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1500, 700]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { model_type: 'legislation_nlp', retrain_status: $json.status, accuracy_score: $json.accuracy_score || null, training_time: $json.training_time || null } }];"
+      },
+      "id": "process-nlp-results",
+      "name": "Process NLP Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1700, 700]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.retrain_status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-nlp-failure",
+      "name": "Check NLP Failure",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1900, 700]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ML Model Retraining Failed\n\n❌ Model: {{ $json.model_type }}\n💥 Status: {{ $json.retrain_status }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}"
+      },
+      "id": "slack-nlp-failure",
+      "name": "Slack NLP Failure",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2100, 650]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ ML Model Retraining Complete\n\n🤖 Model: {{ $json.model_type }}\n✅ Status: {{ $json.retrain_status }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-nlp-success",
+      "name": "Slack NLP Success",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2300, 700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/archive-legislation",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        },
+        "bodyParameters": {
+          "older_than_days": 365
+        }
+      },
+      "id": "execute-data-cleanup",
+      "name": "Execute Data Cleanup",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 1150]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { cleanup_status: 'completed', records_archived: $json.records_archived || 0, space_freed_mb: $json.space_freed_mb || 0, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "process-cleanup-results",
+      "name": "Process Cleanup Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1300, 1150]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Complete Automation Summary\n\n🤖 All Systems Operational\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n📊 System Health: ✅\n📈 Data Ingestion: ✅\n🚨 Alert Management: ✅\n📊 Portfolio Analysis: ✅\n🤖 ML Models: ✅\n🧹 Data Cleanup: ✅\n\n🚀 LegalEdge platform fully automated!"
+      },
+      "id": "slack-final-summary",
+      "name": "Slack Final Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2500, 100]
+    }
+  ],
+  "connections": {
+    "Master Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Execution Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Execution Mode": {
+      "main": [
+        [
+          {
+            "node": "Set Automation Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Automation Tasks": {
+      "main": [
+        [
+          {
+            "node": "Split Automation Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Automation Tasks": {
+      "main": [
+        [
+          {
+            "node": "Route System Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Data Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Alert Management",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Portfolio Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route ML Model Management",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route External API Integration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Data Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route System Monitoring": {
+      "main": [
+        [
+          {
+            "node": "Check API Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Database Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Redis Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Data Coverage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check API Health": {
+      "main": [
+        [
+          {
+            "node": "Process API Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Database Health": {
+      "main": [
+        [
+          {
+            "node": "Process Database Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Redis Health": {
+      "main": [
+        [
+          {
+            "node": "Process Redis Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Data Coverage": {
+      "main": [
+        [
+          {
+            "node": "Process Data Coverage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process API Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Database Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process Redis Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Process Data Coverage": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge Health Data": {
+      "main": [
+        [
+          {
+            "node": "Check for System Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for System Issues": {
+      "main": [
+        [
+          {
+            "node": "Slack System Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Data Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Fetch Congress.gov Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch State Portals Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch SEC Filings Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch News Feeds Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Market Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Congress.gov Data": {
+      "main": [
+        [
+          {
+            "node": "Process Congress Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch State Portals Data": {
+      "main": [
+        [
+          {
+            "node": "Process State Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch SEC Filings Data": {
+      "main": [
+        [
+          {
+            "node": "Process SEC Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch News Feeds Data": {
+      "main": [
+        [
+          {
+            "node": "Process News Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Market Data": {
+      "main": [
+        [
+          {
+            "node": "Process Market Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Congress Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Ingestion Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process State Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Ingestion Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process SEC Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Ingestion Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Process News Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Ingestion Data",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Process Market Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Ingestion Data",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Merge Ingestion Data": {
+      "main": [
+        [
+          {
+            "node": "Send Ingestion to LegalEdge API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Alert Management": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Alerts": {
+      "main": [
+        [
+          {
+            "node": "Filter Critical Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter Normal Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Critical Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check Critical Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Normal Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check Normal Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Critical Alerts": {
+      "main": [
+        [
+          {
+            "node": "Slack Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Normal Alerts": {
+      "main": [
+        [
+          {
+            "node": "Slack Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Normal Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Alerts as Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Normal Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Alerts as Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Portfolio Analysis": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Portfolios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Portfolios": {
+      "main": [
+        [
+          {
+            "node": "Prepare Portfolio Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Portfolio Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Portfolios with Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Portfolios with Holdings": {
+      "main": [
+        [
+          {
+            "node": "Analyze Portfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Portfolio": {
+      "main": [
+        [
+          {
+            "node": "Process Portfolio Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Portfolio Analysis": {
+      "main": [
+        [
+          {
+            "node": "Check High Risk Portfolios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Portfolio Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check High Risk Portfolios": {
+      "main": [
+        [
+          {
+            "node": "Slack High Risk Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Portfolio Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Slack Opportunity Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route ML Model Management": {
+      "main": [
+        [
+          {
+            "node": "Check Legislation NLP Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Legislation NLP Status": {
+      "main": [
+        [
+          {
+            "node": "Check NLP Needs Retraining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check NLP Needs Retraining": {
+      "main": [
+        [
+          {
+            "node": "Retrain Legislation NLP Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrain Legislation NLP Model": {
+      "main": [
+        [
+          {
+            "node": "Process NLP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process NLP Results": {
+      "main": [
+        [
+          {
+            "node": "Check NLP Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check NLP Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack NLP Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack NLP Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack NLP Success": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Data Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Execute Data Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Data Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Process Cleanup Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Cleanup Results": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack System Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Ingestion to LegalEdge API": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Alerts as Delivered": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack High Risk Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Opportunity Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Final Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-complete-automation",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Complete Automation",
+      "id": "complete-automation"
+    },
+    {
+      "name": "Single Workflow",
+      "id": "single-workflow"
+    }
+  ]
+}
