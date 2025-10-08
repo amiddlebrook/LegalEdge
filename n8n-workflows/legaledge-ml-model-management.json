@@ -1,0 +1,958 @@
+{
+  "name": "LegalEdge ML Model Management & Retraining",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "model_types",
+              "value": "[\"legislation_nlp\", \"sector_forecasting\", \"risk_assessment\", \"opportunity_ranking\"]"
+            }
+          ]
+        }
+      },
+      "id": "set-model-types",
+      "name": "Set Model Types",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const modelTypes = JSON.parse(item.json.model_types);\n  return modelTypes.map(modelType => ({ json: { model_type: modelType, timestamp: new Date().toISOString() } }));\n}).flat();"
+      },
+      "id": "split-model-types",
+      "name": "Split Model Types",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.model_type }}",
+              "operation": "equals",
+              "field2": "legislation_nlp"
+            }
+          ]
+        }
+      },
+      "id": "route-legislation-nlp",
+      "name": "Route Legislation NLP Model",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.model_type }}",
+              "operation": "equals",
+              "field2": "sector_forecasting"
+            }
+          ]
+        }
+      },
+      "id": "route-sector-forecasting",
+      "name": "Route Sector Forecasting Model",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.model_type }}",
+              "operation": "equals",
+              "field2": "risk_assessment"
+            }
+          ]
+        }
+      },
+      "id": "route-risk-assessment",
+      "name": "Route Risk Assessment Model",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 660]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.model_type }}",
+              "operation": "equals",
+              "field2": "opportunity_ranking"
+            }
+          ]
+        }
+      },
+      "id": "route-opportunity-ranking",
+      "name": "Route Opportunity Ranking Model",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 900]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ml/models/legislation_nlp/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-legislation-nlp-status",
+      "name": "Check Legislation NLP Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ml/models/sector_forecasting/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-sector-forecasting-status",
+      "name": "Check Sector Forecasting Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ml/models/risk_assessment/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-risk-assessment-status",
+      "name": "Check Risk Assessment Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 660]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ml/models/opportunity_ranking/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-opportunity-ranking-status",
+      "name": "Check Opportunity Ranking Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.needs_retraining || $json.last_trained_days_ago > 7 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-legislation-nlp-needs-retraining",
+      "name": "Check Legislation NLP Needs Retraining",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1440, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.needs_retraining || $json.last_trained_days_ago > 7 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-sector-forecasting-needs-retraining",
+      "name": "Check Sector Forecasting Needs Retraining",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1440, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.needs_retraining || $json.last_trained_days_ago > 7 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-risk-assessment-needs-retraining",
+      "name": "Check Risk Assessment Needs Retraining",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1440, 660]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.needs_retraining || $json.last_trained_days_ago > 7 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-opportunity-ranking-needs-retraining",
+      "name": "Check Opportunity Ranking Needs Retraining",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1440, 900]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml/models/legislation_nlp/retrain",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "retrain-legislation-nlp",
+      "name": "Retrain Legislation NLP Model",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml/models/sector_forecasting/retrain",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "retrain-sector-forecasting",
+      "name": "Retrain Sector Forecasting Model",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml/models/risk_assessment/retrain",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "retrain-risk-assessment",
+      "name": "Retrain Risk Assessment Model",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 540]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ml/models/opportunity_ranking/retrain",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        }
+      },
+      "id": "retrain-opportunity-ranking",
+      "name": "Retrain Opportunity Ranking Model",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 780]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    model_type: 'legislation_nlp',\n    retrain_status: $json.status,\n    accuracy_score: $json.accuracy_score || null,\n    training_time: $json.training_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-legislation-nlp-results",
+      "name": "Process Legislation NLP Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1920, 60]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    model_type: 'sector_forecasting',\n    retrain_status: $json.status,\n    accuracy_score: $json.accuracy_score || null,\n    training_time: $json.training_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-sector-forecasting-results",
+      "name": "Process Sector Forecasting Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    model_type: 'risk_assessment',\n    retrain_status: $json.status,\n    accuracy_score: $json.accuracy_score || null,\n    training_time: $json.training_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-risk-assessment-results",
+      "name": "Process Risk Assessment Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1920, 540]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    model_type: 'opportunity_ranking',\n    retrain_status: $json.status,\n    accuracy_score: $json.accuracy_score || null,\n    training_time: $json.training_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-opportunity-ranking-results",
+      "name": "Process Opportunity Ranking Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1920, 780]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.retrain_status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-legislation-nlp-failure",
+      "name": "Check Legislation NLP Failure",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2160, 60]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.retrain_status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-sector-forecasting-failure",
+      "name": "Check Sector Forecasting Failure",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2160, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.retrain_status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-risk-assessment-failure",
+      "name": "Check Risk Assessment Failure",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2160, 540]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.retrain_status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-opportunity-ranking-failure",
+      "name": "Check Opportunity Ranking Failure",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [2160, 780]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ML Model Retraining Failed\n\n❌ Model: {{ $json.model_type }}\n💥 Status: {{ $json.retrain_status }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s"
+      },
+      "id": "slack-legislation-nlp-failure",
+      "name": "Slack Legislation NLP Failure",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2400, -60]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ML Model Retraining Failed\n\n❌ Model: {{ $json.model_type }}\n💥 Status: {{ $json.retrain_status }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s"
+      },
+      "id": "slack-sector-forecasting-failure",
+      "name": "Slack Sector Forecasting Failure",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2400, 240]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ML Model Retraining Failed\n\n❌ Model: {{ $json.model_type }}\n💥 Status: {{ $json.retrain_status }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s"
+      },
+      "id": "slack-risk-assessment-failure",
+      "name": "Slack Risk Assessment Failure",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2400, 480]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ML Model Retraining Failed\n\n❌ Model: {{ $json.model_type }}\n💥 Status: {{ $json.retrain_status }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s"
+      },
+      "id": "slack-opportunity-ranking-failure",
+      "name": "Slack Opportunity Ranking Failure",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2400, 720]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ ML Model Retraining Complete\n\n🤖 Model: {{ $json.model_type }}\n✅ Status: {{ $json.retrain_status }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-legislation-nlp-success",
+      "name": "Slack Legislation NLP Success",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2640, 60]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ ML Model Retraining Complete\n\n🤖 Model: {{ $json.model_type }}\n✅ Status: {{ $json.retrain_status }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-sector-forecasting-success",
+      "name": "Slack Sector Forecasting Success",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2640, 300]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ ML Model Retraining Complete\n\n🤖 Model: {{ $json.model_type }}\n✅ Status: {{ $json.retrain_status }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-risk-assessment-success",
+      "name": "Slack Risk Assessment Success",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2640, 540]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ ML Model Retraining Complete\n\n🤖 Model: {{ $json.model_type }}\n✅ Status: {{ $json.retrain_status }}\n📊 Accuracy: {{ $json.accuracy_score || 'N/A' }}\n⏱️ Training Time: {{ $json.training_time || 'N/A' }}s\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}"
+      },
+      "id": "slack-opportunity-ranking-success",
+      "name": "Slack Opportunity Ranking Success",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2640, 780]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=📊 LegalEdge ML Model Retraining Summary\n\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🤖 Models Processed: 4\n✅ Successful: {{ $json.successful_models || 0 }}\n❌ Failed: {{ $json.failed_models || 0 }}\n📈 Overall Status: {{ $json.overall_status || 'Complete' }}"
+      },
+      "id": "slack-retraining-summary",
+      "name": "Slack Retraining Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2880, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Model Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Model Types": {
+      "main": [
+        [
+          {
+            "node": "Split Model Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Model Types": {
+      "main": [
+        [
+          {
+            "node": "Route Legislation NLP Model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Sector Forecasting Model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Risk Assessment Model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Opportunity Ranking Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Legislation NLP Model": {
+      "main": [
+        [
+          {
+            "node": "Check Legislation NLP Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Sector Forecasting Model": {
+      "main": [
+        [
+          {
+            "node": "Check Sector Forecasting Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Risk Assessment Model": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Assessment Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Opportunity Ranking Model": {
+      "main": [
+        [
+          {
+            "node": "Check Opportunity Ranking Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Legislation NLP Status": {
+      "main": [
+        [
+          {
+            "node": "Check Legislation NLP Needs Retraining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Sector Forecasting Status": {
+      "main": [
+        [
+          {
+            "node": "Check Sector Forecasting Needs Retraining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Risk Assessment Status": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Assessment Needs Retraining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Opportunity Ranking Status": {
+      "main": [
+        [
+          {
+            "node": "Check Opportunity Ranking Needs Retraining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Legislation NLP Needs Retraining": {
+      "main": [
+        [
+          {
+            "node": "Retrain Legislation NLP Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Sector Forecasting Needs Retraining": {
+      "main": [
+        [
+          {
+            "node": "Retrain Sector Forecasting Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Risk Assessment Needs Retraining": {
+      "main": [
+        [
+          {
+            "node": "Retrain Risk Assessment Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Opportunity Ranking Needs Retraining": {
+      "main": [
+        [
+          {
+            "node": "Retrain Opportunity Ranking Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrain Legislation NLP Model": {
+      "main": [
+        [
+          {
+            "node": "Process Legislation NLP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrain Sector Forecasting Model": {
+      "main": [
+        [
+          {
+            "node": "Process Sector Forecasting Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrain Risk Assessment Model": {
+      "main": [
+        [
+          {
+            "node": "Process Risk Assessment Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrain Opportunity Ranking Model": {
+      "main": [
+        [
+          {
+            "node": "Process Opportunity Ranking Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Legislation NLP Results": {
+      "main": [
+        [
+          {
+            "node": "Check Legislation NLP Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Sector Forecasting Results": {
+      "main": [
+        [
+          {
+            "node": "Check Sector Forecasting Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Risk Assessment Results": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Assessment Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Opportunity Ranking Results": {
+      "main": [
+        [
+          {
+            "node": "Check Opportunity Ranking Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Legislation NLP Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Legislation NLP Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Sector Forecasting Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Sector Forecasting Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Risk Assessment Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Risk Assessment Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Opportunity Ranking Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Opportunity Ranking Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Legislation NLP Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Sector Forecasting Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Risk Assessment Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Opportunity Ranking Failure": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Legislation NLP Success": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Sector Forecasting Success": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Risk Assessment Success": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Opportunity Ranking Success": {
+      "main": [
+        [
+          {
+            "node": "Slack Retraining Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-ml-model-management",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "ML Models",
+      "id": "ml-models"
+    },
+    {
+      "name": "Model Retraining",
+      "id": "model-retraining"
+    }
+  ]
+}

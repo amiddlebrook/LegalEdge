@@ -1,0 +1,637 @@
+{
+  "name": "LegalEdge Data Cleanup & Maintenance",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "cleanup_tasks",
+              "value": "[\"archive_old_legislation\", \"cleanup_temp_files\", \"optimize_database\", \"cleanup_old_logs\", \"refresh_materialized_views\", \"validate_data_integrity\"]"
+            }
+          ]
+        }
+      },
+      "id": "set-cleanup-tasks",
+      "name": "Set Cleanup Tasks",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const tasks = JSON.parse(item.json.cleanup_tasks);\n  return tasks.map(task => ({ json: { task_name: task, timestamp: new Date().toISOString() } }));\n}).flat();"
+      },
+      "id": "split-cleanup-tasks",
+      "name": "Split Cleanup Tasks",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "archive_old_legislation"
+            }
+          ]
+        }
+      },
+      "id": "route-archive-legislation",
+      "name": "Route Archive Legislation",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "cleanup_temp_files"
+            }
+          ]
+        }
+      },
+      "id": "route-cleanup-temp",
+      "name": "Route Cleanup Temp Files",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "optimize_database"
+            }
+          ]
+        }
+      },
+      "id": "route-optimize-db",
+      "name": "Route Optimize Database",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 660]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "cleanup_old_logs"
+            }
+          ]
+        }
+      },
+      "id": "route-cleanup-logs",
+      "name": "Route Cleanup Old Logs",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "refresh_materialized_views"
+            }
+          ]
+        }
+      },
+      "id": "route-refresh-views",
+      "name": "Route Refresh Materialized Views",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 1140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.task_name }}",
+              "operation": "equals",
+              "field2": "validate_data_integrity"
+            }
+          ]
+        }
+      },
+      "id": "route-validate-integrity",
+      "name": "Route Validate Data Integrity",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 1380]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/archive-legislation",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 300000
+        },
+        "bodyParameters": {
+          "older_than_days": 365
+        }
+      },
+      "id": "execute-archive-legislation",
+      "name": "Execute Archive Legislation",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/cleanup-temp",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "execute-cleanup-temp",
+      "name": "Execute Cleanup Temp Files",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/optimize-database",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "execute-optimize-db",
+      "name": "Execute Optimize Database",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 660]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/cleanup-logs",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 60000
+        },
+        "bodyParameters": {
+          "older_than_days": 30
+        }
+      },
+      "id": "execute-cleanup-logs",
+      "name": "Execute Cleanup Old Logs",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 900]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/refresh-views",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "execute-refresh-views",
+      "name": "Execute Refresh Materialized Views",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 1140]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "maintenance/validate-integrity",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "execute-validate-integrity",
+      "name": "Execute Validate Data Integrity",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 1380]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'archive_old_legislation',\n    records_archived: $json.records_archived || 0,\n    space_freed_mb: $json.space_freed_mb || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-archive-results",
+      "name": "Process Archive Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'cleanup_temp_files',\n    files_deleted: $json.files_deleted || 0,\n    space_freed_mb: $json.space_freed_mb || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-cleanup-temp-results",
+      "name": "Process Cleanup Temp Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 420]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'optimize_database',\n    tables_optimized: $json.tables_optimized || 0,\n    indexes_rebuilt: $json.indexes_rebuilt || 0,\n    performance_improvement: $json.performance_improvement || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-optimize-db-results",
+      "name": "Process Optimize DB Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 660]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'cleanup_old_logs',\n    log_files_deleted: $json.log_files_deleted || 0,\n    space_freed_mb: $json.space_freed_mb || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-cleanup-logs-results",
+      "name": "Process Cleanup Logs Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 900]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'refresh_materialized_views',\n    views_refreshed: $json.views_refreshed || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-refresh-views-results",
+      "name": "Process Refresh Views Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 1140]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    task_name: 'validate_data_integrity',\n    tables_validated: $json.tables_validated || 0,\n    issues_found: $json.issues_found || 0,\n    issues_fixed: $json.issues_fixed || 0,\n    execution_time_seconds: $json.execution_time_seconds || 0,\n    status: 'completed',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-validate-integrity-results",
+      "name": "Process Validate Integrity Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 1380]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge-cleanup-results",
+      "name": "Merge Cleanup Results",
+      "type": "@n8n/n8n-nodes-langchain.merge",
+      "typeVersion": 2.1,
+      "position": [1680, 600]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Data Cleanup Complete\n\n🧹 Maintenance Tasks Completed\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Tasks Executed: 6\n💾 Total Space Freed: {{ $json.total_space_freed_mb || 0 }} MB\n⏱️ Total Execution Time: {{ $json.total_execution_time_seconds || 0 }}s\n✅ Status: All Tasks Successful"
+      },
+      "id": "slack-cleanup-summary",
+      "name": "Slack Cleanup Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1920, 600]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Cleanup Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Cleanup Tasks": {
+      "main": [
+        [
+          {
+            "node": "Split Cleanup Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Cleanup Tasks": {
+      "main": [
+        [
+          {
+            "node": "Route Archive Legislation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Optimize Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Cleanup Old Logs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Refresh Materialized Views",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Validate Data Integrity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Archive Legislation": {
+      "main": [
+        [
+          {
+            "node": "Execute Archive Legislation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Cleanup Temp Files": {
+      "main": [
+        [
+          {
+            "node": "Execute Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Optimize Database": {
+      "main": [
+        [
+          {
+            "node": "Execute Optimize Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Cleanup Old Logs": {
+      "main": [
+        [
+          {
+            "node": "Execute Cleanup Old Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Refresh Materialized Views": {
+      "main": [
+        [
+          {
+            "node": "Execute Refresh Materialized Views",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Validate Data Integrity": {
+      "main": [
+        [
+          {
+            "node": "Execute Validate Data Integrity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Archive Legislation": {
+      "main": [
+        [
+          {
+            "node": "Process Archive Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Cleanup Temp Files": {
+      "main": [
+        [
+          {
+            "node": "Process Cleanup Temp Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Optimize Database": {
+      "main": [
+        [
+          {
+            "node": "Process Optimize DB Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Cleanup Old Logs": {
+      "main": [
+        [
+          {
+            "node": "Process Cleanup Logs Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Refresh Materialized Views": {
+      "main": [
+        [
+          {
+            "node": "Process Refresh Views Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Validate Data Integrity": {
+      "main": [
+        [
+          {
+            "node": "Process Validate Integrity Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Archive Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Cleanup Temp Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process Optimize DB Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Process Cleanup Logs Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Process Refresh Views Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Process Validate Integrity Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Cleanup Results",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Merge Cleanup Results": {
+      "main": [
+        [
+          {
+            "node": "Slack Cleanup Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-data-cleanup",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Data Cleanup",
+      "id": "data-cleanup"
+    },
+    {
+      "name": "Maintenance",
+      "id": "maintenance"
+    }
+  ]
+}

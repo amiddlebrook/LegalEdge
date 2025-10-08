@@ -1,0 +1,190 @@
+{
+  "name": "LegalEdge Data Ingestion Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingestion/trigger",
+        "responseMode": "responseBody",
+        "options": {}
+      },
+      "id": "trigger-ingestion",
+      "name": "Trigger LegalEdge Ingestion",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.status }}",
+              "operation": "notEqual",
+              "field2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-ingestion-status",
+      "name": "Check Ingestion Status",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "error_message",
+              "value": "={{ $json.error || 'Ingestion failed' }}"
+            }
+          ]
+        }
+      },
+      "id": "prepare-error-data",
+      "name": "Prepare Error Data",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [720, 420],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 LegalEdge Ingestion Alert\n\n❌ Ingestion Failed\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🔍 Error: {{ $json.error_message }}\n\nPlease check the LegalEdge backend logs for more details."
+      },
+      "id": "slack-notification-error",
+      "name": "Slack Error Notification",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [960, 420],
+      "executeOnce": false
+    },
+    {
+      "parameters": {},
+      "id": "success-path",
+      "name": "Success Path",
+      "type": "@n8n/n8n-nodes-langchain.noOp",
+      "typeVersion": 1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Ingestion Complete\n\n📊 Ingestion Successful\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📈 Records Processed: {{ $json.records_processed || 'N/A' }}\n🔄 Status: {{ $json.status }}"
+      },
+      "id": "slack-notification-success",
+      "name": "Slack Success Notification",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1200, 180],
+      "executeOnce": false
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Trigger LegalEdge Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger LegalEdge Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Check Ingestion Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Ingestion Status": {
+      "main": [
+        [
+          {
+            "node": "Prepare Error Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error Data": {
+      "main": [
+        [
+          {
+            "node": "Slack Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Path": {
+      "main": [
+        [
+          {
+            "node": "Slack Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-data-ingestion",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Data Ingestion",
+      "id": "data-ingestion"
+    },
+    {
+      "name": "Automation",
+      "id": "automation"
+    }
+  ]
+}

@@ -1,0 +1,445 @@
+{
+  "name": "LegalEdge Alert Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "alerts/pending",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-pending-alerts",
+      "name": "Fetch Pending Alerts",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.alerts && $json.alerts.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-alerts-exists",
+      "name": "Check if Alerts Exist",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.filter(item => item.json.severity === 'critical' || item.json.severity === 'high');"
+      },
+      "id": "filter-critical-alerts",
+      "name": "Filter Critical Alerts",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 180],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.filter(item => item.json.severity === 'medium' || item.json.severity === 'low');"
+      },
+      "id": "filter-normal-alerts",
+      "name": "Filter Normal Alerts",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 420],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-critical-alerts",
+      "name": "Check Critical Alerts",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-normal-alerts",
+      "name": "Check Normal Alerts",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 CRITICAL LegalEdge Alert\n\n⚠️ Severity: {{ $json.severity }}\n📋 Title: {{ $json.title }}\n📝 Message: {{ $json.message }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🔗 Link: {{ $json.link || 'N/A' }}"
+      },
+      "id": "slack-critical-alert",
+      "name": "Slack Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1200, 60]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.CRITICAL_ALERT_EMAIL || 'alerts@yourcompany.com' }}",
+        "subject": "=🚨 CRITICAL: {{ $json.title }}",
+        "textTemplate": "=🚨 Critical LegalEdge Alert\n\nTitle: {{ $json.title }}\nSeverity: {{ $json.severity }}\nMessage: {{ $json.message }}\nTime: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nView Details: {{ $json.link || 'LegalEdge Dashboard' }}"
+      },
+      "id": "email-critical-alert",
+      "name": "Email Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1440, 60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "{{ $env.CRITICAL_WEBHOOK_URL }}",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "alert": "={{ $json }}"
+        }
+      },
+      "id": "webhook-critical-alert",
+      "name": "Webhook Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 60]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=📢 LegalEdge Alert\n\n📋 Title: {{ $json.title }}\n📝 Message: {{ $json.message }}\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🔗 Link: {{ $json.link || 'N/A' }}"
+      },
+      "id": "slack-normal-alert",
+      "name": "Slack Normal Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.NORMAL_ALERT_EMAIL || 'notifications@yourcompany.com' }}",
+        "subject": "={{ $json.title }}",
+        "textTemplate": "=LegalEdge Alert\n\nTitle: {{ $json.title }}\nMessage: {{ $json.message }}\nTime: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nView Details: {{ $json.link || 'LegalEdge Dashboard' }}"
+      },
+      "id": "email-normal-alert",
+      "name": "Email Normal Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1440, 420]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "{{ $env.NORMAL_WEBHOOK_URL }}",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "alert": "={{ $json }}"
+        }
+      },
+      "id": "webhook-normal-alert",
+      "name": "Webhook Normal Alert",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 420]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alerts/mark-delivered",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParameters": {
+          "alert_ids": "={{ $json.map(alert => alert.id) }}"
+        }
+      },
+      "id": "mark-alerts-delivered",
+      "name": "Mark Alerts as Delivered",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1920, 240]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Alert Processing Complete\n\n📊 Summary\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n🚨 Critical Alerts: {{ $json.critical_count || 0 }}\n📢 Normal Alerts: {{ $json.normal_count || 0 }}\n✅ Successfully Processed: {{ $json.delivered_count || 0 }}"
+      },
+      "id": "slack-summary",
+      "name": "Slack Processing Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2160, 240]
+    },
+    {
+      "parameters": {},
+      "id": "no-alerts",
+      "name": "No Alerts Path",
+      "type": "@n8n/n8n-nodes-langchain.noOp",
+      "typeVersion": 1,
+      "position": [960, 540]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check if Alerts Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Alerts Exist": {
+      "main": [
+        [
+          {
+            "node": "Filter Critical Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Alerts Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Critical Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check Critical Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Normal Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check Normal Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Critical Alerts": {
+      "main": [
+        [
+          {
+            "node": "Slack Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Normal Alerts": {
+      "main": [
+        [
+          {
+            "node": "Slack Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Webhook Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Alerts as Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Normal Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Normal Alert": {
+      "main": [
+        [
+          {
+            "node": "Webhook Normal Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Normal Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Alerts as Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Alerts as Delivered": {
+      "main": [
+        [
+          {
+            "node": "Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-alert-management",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Alert Management",
+      "id": "alert-management"
+    },
+    {
+      "name": "Notifications",
+      "id": "notifications"
+    }
+  ]
+}

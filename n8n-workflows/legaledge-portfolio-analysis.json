@@ -1,0 +1,500 @@
+{
+  "name": "LegalEdge Portfolio Analysis & Opportunity Discovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "portfolios/active",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-active-portfolios",
+      "name": "Fetch Active Portfolios",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(portfolio => ({\n  json: {\n    portfolio_id: portfolio.json.id,\n    portfolio_name: portfolio.json.name,\n    holdings_count: portfolio.json.holdings_count || 0,\n    last_analysis: portfolio.json.last_analysis || null\n  }\n}));"
+      },
+      "id": "prepare-portfolio-data",
+      "name": "Prepare Portfolio Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.holdings_count > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-portfolios-with-holdings",
+      "name": "Filter Portfolios with Holdings",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolios/{{ $json.portfolio_id }}/analysis",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 60000
+        }
+      },
+      "id": "analyze-portfolio",
+      "name": "Analyze Portfolio",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    portfolio_id: $json.portfolio_id,\n    analysis_result: $json,\n    analysis_timestamp: new Date().toISOString(),\n    risk_score: $json.risk_score || 0,\n    opportunities_count: $json.opportunities ? $json.opportunities.length : 0\n  }\n}];"
+      },
+      "id": "process-analysis-results",
+      "name": "Process Analysis Results",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "field1": "={{ $json.risk_score }}",
+              "operation": "greaterThan",
+              "field2": 7.5
+            }
+          ]
+        }
+      },
+      "id": "check-high-risk-portfolios",
+      "name": "Check High Risk Portfolios",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1680, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "field1": "={{ $json.opportunities_count }}",
+              "operation": "greaterThan",
+              "field2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-portfolio-opportunities",
+      "name": "Check Portfolio Opportunities",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1680, 420]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=⚠️ High Risk Portfolio Alert\n\n📊 Portfolio: {{ $json.portfolio_name }}\n🔴 Risk Score: {{ $json.risk_score }}/10\n⏰ Analysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📈 Holdings: {{ $json.holdings_count }}\n\nImmediate attention recommended."
+      },
+      "id": "slack-high-risk-alert",
+      "name": "Slack High Risk Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1920, 60]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.RISK_ALERT_EMAIL || 'risk@yourcompany.com' }}",
+        "subject": "=⚠️ HIGH RISK: {{ $json.portfolio_name }} Portfolio",
+        "textTemplate": "=High Risk Portfolio Alert\n\nPortfolio: {{ $json.portfolio_name }}\nRisk Score: {{ $json.risk_score }}/10\nHoldings Count: {{ $json.holdings_count }}\nAnalysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nPlease review the portfolio analysis and consider rebalancing or risk mitigation strategies.\n\nAccess Dashboard: {{ $env.LEGALEDGE_DASHBOARD_URL || 'https://app.legaledge.com' }}"
+      },
+      "id": "email-high-risk-alert",
+      "name": "Email High Risk Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [2160, 60]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=💡 Portfolio Opportunity Alert\n\n📊 Portfolio: {{ $json.portfolio_name }}\n💰 Opportunities Found: {{ $json.opportunities_count }}\n⏰ Analysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nNew investment opportunities identified!"
+      },
+      "id": "slack-opportunity-alert",
+      "name": "Slack Opportunity Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1920, 420]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.OPPORTUNITY_ALERT_EMAIL || 'opportunities@yourcompany.com' }}",
+        "subject": "=💡 OPPORTUNITIES: {{ $json.portfolio_name }} Portfolio",
+        "textTemplate": "=Portfolio Opportunity Alert\n\nPortfolio: {{ $json.portfolio_name }}\nOpportunities Found: {{ $json.opportunities_count }}\nAnalysis Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nNew investment opportunities have been identified based on recent legislative and market analysis.\n\nAccess Dashboard: {{ $env.LEGALEDGE_DASHBOARD_URL || 'https://app.legaledge.com' }}"
+      },
+      "id": "email-opportunity-alert",
+      "name": "Email Opportunity Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [2160, 420]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "opportunities/market",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-market-opportunities",
+      "name": "Fetch Market Opportunities",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 540]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    opportunities_count: items.length,\n    top_opportunities: items.slice(0, 5).map(opp => ({\n      symbol: opp.json.symbol,\n      score: opp.json.score,\n      rationale: opp.json.rationale\n    })),\n    analysis_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-market-opportunities",
+      "name": "Process Market Opportunities",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 540]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=📈 Market Opportunity Digest\n\n💎 Top Opportunities Found: {{ $json.opportunities_count }}\n⏰ Generated: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n{{ $json.top_opportunities.map(opp => '• ' + opp.symbol + ' (Score: ' + opp.score + ')').join('\\n') }}"
+      },
+      "id": "slack-market-opportunities",
+      "name": "Slack Market Opportunities",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1680, 540]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "forecasts/sector",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-sector-forecasts",
+      "name": "Fetch Sector Forecasts",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 780]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    sectors_analyzed: items.length,\n    bullish_sectors: items.filter(sector => sector.json.forecast_direction === 'bullish').length,\n    bearish_sectors: items.filter(sector => sector.json.forecast_direction === 'bearish').length,\n    top_bullish: items.filter(sector => sector.json.forecast_direction === 'bullish').slice(0, 3),\n    analysis_timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-sector-forecasts",
+      "name": "Process Sector Forecasts",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 780]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🔮 Sector Forecast Update\n\n📊 Sectors Analyzed: {{ $json.sectors_analyzed }}\n📈 Bullish Sectors: {{ $json.bullish_sectors }}\n📉 Bearish Sectors: {{ $json.bearish_sectors }}\n⏰ Generated: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nTop Bullish Sectors:\\n{{ $json.top_bullish.map(sector => '• ' + sector.json.sector_name + ' (' + sector.json.confidence + '% confidence)').join('\\n') }}"
+      },
+      "id": "slack-sector-forecasts",
+      "name": "Slack Sector Forecasts",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1680, 780]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Portfolio Analysis Complete\n\n📊 Summary\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📈 Portfolios Analyzed: {{ $json.portfolios_analyzed || 0 }}\n⚠️ High Risk Alerts: {{ $json.high_risk_alerts || 0 }}\n💡 Opportunity Alerts: {{ $json.opportunity_alerts || 0 }}\n🔮 Market Opportunities: {{ $json.market_opportunities || 0 }}"
+      },
+      "id": "slack-analysis-summary",
+      "name": "Slack Analysis Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2400, 300]
+    },
+    {
+      "parameters": {},
+      "id": "no-portfolios",
+      "name": "No Portfolios Path",
+      "type": "@n8n/n8n-nodes-langchain.noOp",
+      "typeVersion": 1,
+      "position": [1200, 1020]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Portfolios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Portfolios": {
+      "main": [
+        [
+          {
+            "node": "Prepare Portfolio Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Portfolio Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Portfolios with Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Portfolios with Holdings": {
+      "main": [
+        [
+          {
+            "node": "Analyze Portfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Portfolios Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Portfolio": {
+      "main": [
+        [
+          {
+            "node": "Process Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Analysis Results": {
+      "main": [
+        [
+          {
+            "node": "Check High Risk Portfolios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Portfolio Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check High Risk Portfolios": {
+      "main": [
+        [
+          {
+            "node": "Slack High Risk Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack High Risk Alert": {
+      "main": [
+        [
+          {
+            "node": "Email High Risk Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email High Risk Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Analysis Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Portfolio Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Slack Opportunity Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Opportunity Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Opportunity Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Opportunity Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Analysis Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Market Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Process Market Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Market Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Slack Market Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Market Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Slack Analysis Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sector Forecasts": {
+      "main": [
+        [
+          {
+            "node": "Process Sector Forecasts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Sector Forecasts": {
+      "main": [
+        [
+          {
+            "node": "Slack Sector Forecasts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Sector Forecasts": {
+      "main": [
+        [
+          {
+            "node": "Slack Analysis Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-portfolio-analysis",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Portfolio Analysis",
+      "id": "portfolio-analysis"
+    },
+    {
+      "name": "Risk Management",
+      "id": "risk-management"
+    }
+  ]
+}

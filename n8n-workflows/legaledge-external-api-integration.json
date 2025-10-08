@@ -1,0 +1,656 @@
+{
+  "name": "LegalEdge External API Integration Hub",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "external_apis",
+              "value": "[\"news_api\", \"market_data\", \"sec_edgar\", \"congress_gov\", \"alpha_vantage\", \"twitter_api\"]"
+            }
+          ]
+        }
+      },
+      "id": "set-external-apis",
+      "name": "Set External APIs",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const apis = JSON.parse(item.json.external_apis);\n  return apis.map(api => ({ json: { api_name: api, timestamp: new Date().toISOString() } }));\n}).flat();"
+      },
+      "id": "split-external-apis",
+      "name": "Split External APIs",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "news_api"
+            }
+          ]
+        }
+      },
+      "id": "route-news-api",
+      "name": "Route News API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "market_data"
+            }
+          ]
+        }
+      },
+      "id": "route-market-data",
+      "name": "Route Market Data API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "sec_edgar"
+            }
+          ]
+        }
+      },
+      "id": "route-sec-edgar",
+      "name": "Route SEC Edgar API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 660]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "congress_gov"
+            }
+          ]
+        }
+      },
+      "id": "route-congress-gov",
+      "name": "Route Congress.gov API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 900]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "alpha_vantage"
+            }
+          ]
+        }
+      },
+      "id": "route-alpha-vantage",
+      "name": "Route Alpha Vantage API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 1140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "field1": "={{ $json.api_name }}",
+              "operation": "equals",
+              "field2": "twitter_api"
+            }
+          ]
+        }
+      },
+      "id": "route-twitter-api",
+      "name": "Route Twitter API",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [960, 1380]
+    },
+    {
+      "parameters": {
+        "url": "=https://newsapi.org/v2/everything?q=legislation+bills+congress+politics&apiKey={{ $env.NEWS_API_KEY }}&pageSize=100&sortBy=publishedAt",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-news-api",
+      "name": "Fetch News API Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 180]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.marketdata.app/v1/news?token={{ $env.MARKET_DATA_TOKEN }}&symbols=*",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-market-data",
+      "name": "Fetch Market Data API",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&output=atom&count=100",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-sec-edgar",
+      "name": "Fetch SEC Edgar Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 660]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.congress.gov/v3/bill?api_key={{ $env.CONGRESS_API_KEY }}&limit=100&sort=introducedDate",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-congress-gov",
+      "name": "Fetch Congress.gov Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 900]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.alphavantage.co/query?function=NEWS_SENTIMENT&apikey={{ $env.ALPHA_VANTAGE_KEY }}&limit=1000",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-alpha-vantage",
+      "name": "Fetch Alpha Vantage Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 1140]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.twitter.com/2/tweets/search/recent?query=(legislation OR bills OR congress OR politics) -is:retweet&max_results=100&tweet.fields=created_at,public_metrics&user.fields=public_metrics",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000,
+          "headers": {
+            "Authorization": "=Bearer {{ $env.TWITTER_BEARER_TOKEN }}"
+          }
+        }
+      },
+      "id": "fetch-twitter-api",
+      "name": "Fetch Twitter API Data",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 1380]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'news_api',\n    records_fetched: $json.totalResults || items.length,\n    data_processed: items.length,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-news-api",
+      "name": "Process News API Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'market_data',\n    records_fetched: items.length,\n    data_processed: items.length,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-market-data",
+      "name": "Process Market Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 420]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'sec_edgar',\n    records_fetched: items.length,\n    data_processed: items.length,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-sec-edgar",
+      "name": "Process SEC Edgar Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 660]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'congress_gov',\n    records_fetched: items.length,\n    data_processed: items.length,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-congress-gov",
+      "name": "Process Congress.gov Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 900]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'alpha_vantage',\n    records_fetched: $json.feed ? $json.feed.length : 0,\n    data_processed: $json.feed ? $json.feed.length : 0,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-alpha-vantage",
+      "name": "Process Alpha Vantage Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 1140]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_name: 'twitter_api',\n    records_fetched: $json.meta ? $json.meta.result_count : 0,\n    data_processed: items.length,\n    timestamp: new Date().toISOString(),\n    status: 'success'\n  }\n}];"
+      },
+      "id": "process-twitter-api",
+      "name": "Process Twitter API Data",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1440, 1380]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge-api-results",
+      "name": "Merge API Results",
+      "type": "@n8n/n8n-nodes-langchain.merge",
+      "typeVersion": 2.1,
+      "position": [1680, 600]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "external-data/batch",
+        "responseMode": "responseBody",
+        "options": {
+          "bodyContentType": "json",
+          "timeout": 60000
+        },
+        "bodyParameters": {
+          "external_data": "={{ $json }}"
+        }
+      },
+      "id": "send-to-legaledge",
+      "name": "Send to LegalEdge API",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1920, 600]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge External API Integration Complete\n\n🔗 APIs Processed: 6\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Total Records: {{ $json.total_records || 'N/A' }}\n✅ Status: Success"
+      },
+      "id": "slack-success-notification",
+      "name": "Slack Success Notification",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [2160, 600]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set External APIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set External APIs": {
+      "main": [
+        [
+          {
+            "node": "Split External APIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split External APIs": {
+      "main": [
+        [
+          {
+            "node": "Route News API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Market Data API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route SEC Edgar API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Congress.gov API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Alpha Vantage API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Twitter API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route News API": {
+      "main": [
+        [
+          {
+            "node": "Fetch News API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Market Data API": {
+      "main": [
+        [
+          {
+            "node": "Fetch Market Data API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route SEC Edgar API": {
+      "main": [
+        [
+          {
+            "node": "Fetch SEC Edgar Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Congress.gov API": {
+      "main": [
+        [
+          {
+            "node": "Fetch Congress.gov Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Alpha Vantage API": {
+      "main": [
+        [
+          {
+            "node": "Fetch Alpha Vantage Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Twitter API": {
+      "main": [
+        [
+          {
+            "node": "Fetch Twitter API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch News API Data": {
+      "main": [
+        [
+          {
+            "node": "Process News API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Market Data API": {
+      "main": [
+        [
+          {
+            "node": "Process Market Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch SEC Edgar Data": {
+      "main": [
+        [
+          {
+            "node": "Process SEC Edgar Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Congress.gov Data": {
+      "main": [
+        [
+          {
+            "node": "Process Congress.gov Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Alpha Vantage Data": {
+      "main": [
+        [
+          {
+            "node": "Process Alpha Vantage Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twitter API Data": {
+      "main": [
+        [
+          {
+            "node": "Process Twitter API Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process News API Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Market Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process SEC Edgar Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Process Congress.gov Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Process Alpha Vantage Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Process Twitter API Data": {
+      "main": [
+        [
+          {
+            "node": "Merge API Results",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Merge API Results": {
+      "main": [
+        [
+          {
+            "node": "Send to LegalEdge API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to LegalEdge API": {
+      "main": [
+        [
+          {
+            "node": "Slack Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-external-api-integration",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "External APIs",
+      "id": "external-apis"
+    },
+    {
+      "name": "Data Integration",
+      "id": "data-integration"
+    }
+  ]
+}

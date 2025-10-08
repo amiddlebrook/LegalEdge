@@ -1,0 +1,563 @@
+{
+  "name": "LegalEdge System Health Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "health/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-api-health",
+      "name": "Check API Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 180]
+    },
+    {
+      "parameters": {
+        "url": "=https://hc-ping.com/YOUR-HEALTH-CHECKS-UUID",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-database-health",
+      "name": "Check Database Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 420]
+    },
+    {
+      "parameters": {
+        "url": "=https://hc-ping.com/YOUR-HEALTH-CHECKS-UUID",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-redis-health",
+      "name": "Check Redis Health",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 660]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "coverage",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-data-coverage",
+      "name": "Check Data Coverage",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 900]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    api_healthy: $json.status === 'healthy',\n    api_response_time: $json.response_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-api-health",
+      "name": "Process API Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    database_healthy: $json.status === 200,\n    database_response_time: $json.response_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-database-health",
+      "name": "Process Database Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 420]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    redis_healthy: $json.status === 200,\n    redis_response_time: $json.response_time || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-redis-health",
+      "name": "Process Redis Health",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 660]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    coverage_percentage: $json.overall_coverage || 0,\n    last_updated: $json.last_updated || null,\n    data_sources: $json.data_sources || [],\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-data-coverage",
+      "name": "Process Data Coverage",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 900]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "id": "merge-health-data",
+      "name": "Merge Health Data",
+      "type": "@n8n/n8n-nodes-langchain.merge",
+      "typeVersion": 2.1,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ !$json.api_healthy || !$json.database_healthy || !$json.redis_healthy }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-system-issues",
+      "name": "Check for System Issues",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "field1": "={{ $json.coverage_percentage }}",
+              "operation": "lessThan",
+              "field2": 80
+            }
+          ]
+        }
+      },
+      "id": "check-data-coverage-issues",
+      "name": "Check Data Coverage Issues",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1200, 540]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 LegalEdge System Alert\n\n⚠️ Critical System Issues Detected\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n🔴 API Health: {{ $json.api_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n🔴 Database Health: {{ $json.database_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n🔴 Redis Health: {{ $json.redis_healthy ? '✅ Healthy' : '❌ Unhealthy' }}\n📊 Coverage: {{ $json.coverage_percentage }}%\n\nImmediate attention required!"
+      },
+      "id": "slack-critical-alert",
+      "name": "Slack Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1440, 180]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.CRITICAL_SYSTEM_EMAIL || 'ops@yourcompany.com' }}",
+        "subject": "=🚨 CRITICAL: LegalEdge System Down",
+        "textTemplate": "=Critical LegalEdge System Alert\n\nSystem Status: CRITICAL\nTime: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\nComponent Status:\n- API: {{ $json.api_healthy ? 'Healthy' : 'Unhealthy' }}\n- Database: {{ $json.database_healthy ? 'Healthy' : 'Unhealthy' }}\n- Redis: {{ $json.redis_healthy ? 'Healthy' : 'Unhealthy' }}\n- Data Coverage: {{ $json.coverage_percentage }}%\n\nPlease investigate immediately.\n\nDashboard: {{ $env.LEGALEDGE_DASHBOARD_URL || 'https://app.legaledge.com' }}"
+      },
+      "id": "email-critical-alert",
+      "name": "Email Critical Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1680, 180]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=⚠️ LegalEdge Data Coverage Alert\n\n📊 Coverage Below Threshold\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n📈 Current Coverage: {{ $json.coverage_percentage }}%\n🎯 Target Coverage: 80%\n📉 Gap: {{ 80 - $json.coverage_percentage }}%\n\nData ingestion may be failing or incomplete."
+      },
+      "id": "slack-coverage-alert",
+      "name": "Slack Coverage Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1440, 540]
+    },
+    {
+      "parameters": {
+        "toEmail": "={{ $env.DATA_COVERAGE_EMAIL || 'data@yourcompany.com' }}",
+        "subject": "=⚠️ WARNING: LegalEdge Data Coverage Low",
+        "textTemplate": "=LegalEdge Data Coverage Alert\n\nCoverage Warning\nCurrent Coverage: {{ $json.coverage_percentage }}%\nTarget Coverage: 80%\n\nPlease check data ingestion pipelines.\n\nDashboard: {{ $env.LEGALEDGE_DASHBOARD_URL || 'https://app.legaledge.com' }}"
+      },
+      "id": "email-coverage-alert",
+      "name": "Email Coverage Alert",
+      "type": "@n8n/n8n-nodes-langchain.emailSend",
+      "typeVersion": 1,
+      "position": [1680, 540]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "tasks/status",
+        "responseMode": "responseBody",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-worker-status",
+      "name": "Check Worker Status",
+      "type": "@n8n/n8n-nodes-langchain.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 1140]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    workers_active: $json.active_workers || 0,\n    queued_tasks: $json.queued_tasks || 0,\n    failed_tasks: $json.failed_tasks || 0,\n    worker_health: $json.worker_status || 'unknown',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-worker-status",
+      "name": "Process Worker Status",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [720, 1140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.workers_active === 0 || $json.failed_tasks > 10 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-worker-issues",
+      "name": "Check Worker Issues",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1200, 1140]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🔧 LegalEdge Worker Alert\n\n⚠️ Background Worker Issues\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n👥 Active Workers: {{ $json.workers_active }}\n📋 Queued Tasks: {{ $json.queued_tasks }}\n❌ Failed Tasks: {{ $json.failed_tasks }}\n🚨 Status: {{ $json.worker_health }}\n\nWorker processes may need attention."
+      },
+      "id": "slack-worker-alert",
+      "name": "Slack Worker Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1440, 1140]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge System Health Check\n\n🏥 System Status: All Systems Operational\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n\n✅ API: {{ $json.api_healthy ? 'Healthy' : 'Unhealthy' }}\n✅ Database: {{ $json.database_healthy ? 'Healthy' : 'Unhealthy' }}\n✅ Redis: {{ $json.redis_healthy ? 'Healthy' : 'Unhealthy' }}\n✅ Workers: {{ $json.workers_active }} active\n📊 Data Coverage: {{ $json.coverage_percentage }}%"
+      },
+      "id": "slack-health-summary",
+      "name": "Slack Health Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1920, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check API Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Database Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Redis Health",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Data Coverage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Worker Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check API Health": {
+      "main": [
+        [
+          {
+            "node": "Process API Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Database Health": {
+      "main": [
+        [
+          {
+            "node": "Process Database Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Redis Health": {
+      "main": [
+        [
+          {
+            "node": "Process Redis Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Data Coverage": {
+      "main": [
+        [
+          {
+            "node": "Process Data Coverage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Worker Status": {
+      "main": [
+        [
+          {
+            "node": "Process Worker Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process API Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Database Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Process Redis Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Process Data Coverage": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Process Worker Status": {
+      "main": [
+        [
+          {
+            "node": "Merge Health Data",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Merge Health Data": {
+      "main": [
+        [
+          {
+            "node": "Check for System Issues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Data Coverage Issues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Worker Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for System Issues": {
+      "main": [
+        [
+          {
+            "node": "Slack Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Critical Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Data Coverage Issues": {
+      "main": [
+        [
+          {
+            "node": "Slack Coverage Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Coverage Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Coverage Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Worker Issues": {
+      "main": [
+        [
+          {
+            "node": "Slack Worker Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Critical Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Health Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Coverage Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Health Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Worker Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Health Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "n8n-instance-id"
+  },
+  "id": "legaledge-system-monitoring",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "System Monitoring",
+      "id": "system-monitoring"
+    },
+    {
+      "name": "Health Checks",
+      "id": "health-checks"
+    }
+  ]
+}
