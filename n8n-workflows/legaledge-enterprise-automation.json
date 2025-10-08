@@ -1,0 +1,266 @@
+{
+  "name": "LegalEdge Enterprise Automation Platform",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "enterprise-scheduler",
+      "name": "Enterprise Scheduler (1min)",
+      "type": "@n8n/n8n-nodes-langchain.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "execution_context",
+              "value": "enterprise_production"
+            }
+          ]
+        }
+      },
+      "id": "set-execution-context",
+      "name": "Set Execution Context",
+      "type": "@n8n/n8n-nodes-langchain.set",
+      "typeVersion": 3.4,
+      "position": [300, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enterprise-grade task dispatcher\nconst currentTime = new Date();\nconst hour = currentTime.getHours();\nconst minute = currentTime.getMinutes();\n\n// Smart scheduling based on time and load\nconst tasks = [];\n\n// System monitoring every 10 minutes\nif (minute % 10 === 0) {\n  tasks.push('system_health_check');\n}\n\n// Data ingestion every 6 hours\nif (hour % 6 === 0 && minute === 0) {\n  tasks.push('multi_source_ingestion');\n}\n\n// Alert processing every 5 minutes\nif (minute % 5 === 0) {\n  tasks.push('alert_management');\n}\n\n// Portfolio analysis every 12 hours\nif (hour % 12 === 0 && minute === 0) {\n  tasks.push('portfolio_analysis');\n}\n\n// ML model management every 12 hours (offset by 6 hours)\nif (hour % 12 === 6 && minute === 0) {\n  tasks.push('ml_model_management');\n}\n\n// External API sync every 4 hours\nif (hour % 4 === 0 && minute === 0) {\n  tasks.push('external_api_integration');\n}\n\n// Data cleanup daily at 2 AM\nif (hour === 2 && minute === 0) {\n  tasks.push('data_cleanup');\n}\n\nreturn tasks.map(task => ({ json: { task_name: task, scheduled_time: currentTime.toISOString(), priority: getPriority(task) } }));\n\nfunction getPriority(task) {\n  const priorities = {\n    'system_health_check': 'high',\n    'alert_management': 'critical',\n    'multi_source_ingestion': 'high',\n    'portfolio_analysis': 'medium',\n    'ml_model_management': 'medium',\n    'external_api_integration': 'medium',\n    'data_cleanup': 'low'\n  };\n  return priorities[task] || 'medium';\n}"
+      },
+      "id": "intelligent-task-dispatcher",
+      "name": "Intelligent Task Dispatcher",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.length > 0 }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-tasks-available",
+      "name": "Check Tasks Available",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.sort((a, b) => {\n  const priorityOrder = { 'critical': 3, 'high': 2, 'medium': 1, 'low': 0 };\n  return priorityOrder[b.json.priority] - priorityOrder[a.json.priority];\n});"
+      },
+      "id": "sort-tasks-by-priority",
+      "name": "Sort Tasks by Priority",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [900, 50]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enterprise-grade error handler\nconst error = $json.error || 'Unknown error';\nconst taskName = $json.task_name || 'Unknown task';\nconst timestamp = new Date().toISOString();\n\n// Determine error severity\nconst isCritical = isCriticalError(error, taskName);\nconst shouldRetry = shouldRetryError(error, taskName);\nconst shouldEscalate = isCritical && !shouldRetry;\n\nreturn [{\n  json: {\n    error_message: error,\n    task_name: taskName,\n    timestamp: timestamp,\n    severity: isCritical ? 'critical' : 'warning',\n    should_retry: shouldRetry,\n    should_escalate: shouldEscalate,\n    retry_count: ($json.retry_count || 0) + 1,\n    max_retries: getMaxRetries(taskName)\n  }\n}];\n\nfunction isCriticalError(error, task) {\n  const criticalErrors = ['authentication_failed', 'database_connection_error', 'api_rate_exceeded'];\n  const criticalTasks = ['system_health_check', 'alert_management'];\n  return criticalErrors.some(e => error.includes(e)) || criticalTasks.includes(task);\n}\n\nfunction shouldRetryError(error, task) {\n  const retryableErrors = ['timeout', 'temporary_failure', 'rate_limit'];\n  return retryableErrors.some(e => error.includes(e)) && ($json.retry_count || 0) < getMaxRetries(task);\n}\n\nfunction getMaxRetries(task) {\n  const retryConfig = {\n    'system_health_check': 3,\n    'alert_management': 2,\n    'multi_source_ingestion': 3,\n    'portfolio_analysis': 1,\n    'ml_model_management': 2,\n    'external_api_integration': 3,\n    'data_cleanup': 1\n  };\n  return retryConfig[task] || 2;\n}"
+      },
+      "id": "enterprise-error-handler",
+      "name": "Enterprise Error Handler",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.should_retry }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-should-retry",
+      "name": "Check Should Retry",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1300, 150]
+    },
+    {
+      "parameters": {
+        "delay": "={{ calculateRetryDelay($json.retry_count) }}",
+        "resume": "={{ $json.task_name }}"
+      },
+      "id": "retry-with-backoff",
+      "name": "Retry with Exponential Backoff",
+      "type": "@n8n/n8n-nodes-langchain.wait",
+      "typeVersion": 1,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "field1": "={{ $json.should_escalate }}",
+              "operation": "equals",
+              "field2": true
+            }
+          ]
+        }
+      },
+      "id": "check-should-escalate",
+      "name": "Check Should Escalate",
+      "type": "@n8n/n8n-nodes-langchain.if",
+      "typeVersion": 1,
+      "position": [1300, 250]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=🚨 ENTERPRISE ESCALATION: {{ $json.task_name }}\n\n⚠️ Critical Error Requires Immediate Attention\n⏰ Time: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n❌ Error: {{ $json.error_message }}\n🔄 Retry Count: {{ $json.retry_count }}\n📞 Please investigate immediately!"
+      },
+      "id": "enterprise-escalation-alert",
+      "name": "Enterprise Escalation Alert",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "text": "=✅ LegalEdge Enterprise Automation Status\n\n🏢 Enterprise Platform Active\n⏰ Last Check: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}\n📊 Tasks Executed: {{ $json.completed_tasks || 0 }}\n⚠️ Retries Used: {{ $json.total_retries || 0 }}\n🚨 Escalations: {{ $json.escalations || 0 }}\n\n🚀 All systems operational"
+      },
+      "id": "enterprise-status-summary",
+      "name": "Enterprise Status Summary",
+      "type": "@n8n/n8n-nodes-langchain.slack",
+      "typeVersion": 1,
+      "position": [1700, 100]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { task_name: $json.task_name, status: 'completed', completed_at: new Date().toISOString() } }];"
+      },
+      "id": "task-completion-handler",
+      "name": "Task Completion Handler",
+      "type": "@n8n/n8n-nodes-langchain.function",
+      "typeVersion": 1,
+      "position": [1900, 100]
+    }
+  ],
+  "connections": {
+    "Enterprise Scheduler (1min)": {
+      "main": [
+        [
+          {
+            "node": "Set Execution Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Execution Context": {
+      "main": [
+        [
+          {
+            "node": "Intelligent Task Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intelligent Task Dispatcher": {
+      "main": [
+        [
+          {
+            "node": "Check Tasks Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Tasks Available": {
+      "main": [
+        [
+          {
+            "node": "Sort Tasks by Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort Tasks by Priority": {
+      "main": [
+        [
+          {
+            "node": "Enterprise Status Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "timezone": "America/New_York",
+    "errorWorkflow": "error-recovery-workflow"
+  },
+  "staticData": {
+    "enterprise_config": {
+      "max_concurrent_tasks": 3,
+      "retry_base_delay": 30,
+      "max_retry_delay": 300,
+      "escalation_threshold": 3,
+      "monitoring_interval": 60000,
+      "log_retention_days": 30,
+      "security_scan_enabled": true,
+      "performance_monitoring": true
+    }
+  },
+  "meta": {
+    "instanceId": "enterprise-n8n-cluster",
+    "template": true,
+    "version": "2.0.0"
+  },
+  "id": "legaledge-enterprise-automation",
+  "tags": [
+    {
+      "name": "LegalEdge",
+      "id": "legaledge"
+    },
+    {
+      "name": "Enterprise",
+      "id": "enterprise"
+    },
+    {
+      "name": "Production",
+      "id": "production"
+    },
+    {
+      "name": "Scalable",
+      "id": "scalable"
+    }
+  ]
+}
