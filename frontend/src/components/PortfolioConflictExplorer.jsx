@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Search, Filter, AlertTriangle, TrendingUp, TrendingDown, Eye, EyeOff } from 'lucide-react'
-import { Button } from '../components/ui/index.js'
-import { Input } from '../components/ui/index.js'
-import { Select } from '../components/ui/index.js'
-import { Badge } from '../components/ui/index.js'
+import { Button } from './ui/index.jsx'
+import { Input } from './ui/index.jsx'
+import { Select } from './ui/index.jsx'
+import { Badge } from './ui/index.jsx'
 
 const conflictColors = {
   high: 'bg-red-500/10 text-red-400 border-red-500/20',
