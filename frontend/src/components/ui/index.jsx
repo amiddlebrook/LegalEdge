@@ -87,3 +87,5 @@ export const Modal = ({ children, onClose }) => {
     </div>
   )
 }
+
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs'
