@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BarChart3, PieChart, TrendingUp, Users, Settings, Bell, Shield, FileText } from 'lucide-react'
-import { Button } from '../components/ui/index.js'
-import { Badge } from '../components/ui/index.js'
+import { Button } from './ui/index.jsx'
+import { Badge } from './ui/index.jsx'
 
 const personaConfigs = {
   investor: {

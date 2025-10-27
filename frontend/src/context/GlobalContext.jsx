@@ -155,7 +155,7 @@ export function GlobalProvider({ children }) {
     environment: import.meta.env.MODE || 'development'
   }
 
-  return <GlobalProvider.Provider value={value}>{children}</GlobalProvider.Provider>
+  return <GlobalContext.Provider value={value}>{children}</GlobalContext.Provider>
 }
 
 // Main provider component

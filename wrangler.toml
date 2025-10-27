@@ -1,0 +1,8 @@
+name = "legaledge"
+compatibility_date = "2024-10-26"
+
+[build]
+command = "npm --prefix frontend ci && npm --prefix frontend run build"
+
+[assets]
+directory = "frontend/dist"
