@@ -36,4 +36,34 @@ app.post('/queue/ingest', async (c) => {
     return c.json({ message: 'Ingestion job queued' })
 })
 
-export default app
+// Queue consumer handler
+async function queue(batch: MessageBatch, env: Bindings): Promise<void> {
+    for (const message of batch.messages) {
+        try {
+            const payload = message.body as { type: string; data: any }
+
+            console.log(`Processing queue message: ${payload.type}`)
+
+            // Handle different job types
+            switch (payload.type) {
+                case 'ingest_legislation':
+                    console.log('Ingesting legislation:', payload.data)
+                    // TODO: Implement actual ingestion logic
+                    break
+                case 'update_forecasts':
+                    console.log('Updating forecasts:', payload.data)
+                    // TODO: Implement forecast update logic
+                    break
+                default:
+                    console.warn(`Unknown job type: ${payload.type}`)
+            }
+
+            message.ack()
+        } catch (error) {
+            console.error('Error processing message:', error)
+            message.retry()
+        }
+    }
+}
+
+export default { fetch: app.fetch, queue }
