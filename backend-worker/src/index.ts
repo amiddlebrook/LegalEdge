@@ -3,8 +3,9 @@ import { cors } from 'hono/cors'
 
 type Bindings = {
     DB: D1Database
-    CACHE: KVNamespace
+    KV: KVNamespace
     STORAGE: R2Bucket
+    INGESTION_QUEUE: Queue
 }
 
 import auth from './routes/auth'
@@ -24,6 +25,15 @@ app.get('/', (c) => {
 
 app.get('/health', (c) => {
     return c.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Queue management endpoint
+app.post('/queue/ingest', async (c) => {
+    await c.env.INGESTION_QUEUE.send({
+        type: 'ingest_legislation',
+        data: { source: 'congress.gov' }
+    })
+    return c.json({ message: 'Ingestion job queued' })
 })
 
 export default app
