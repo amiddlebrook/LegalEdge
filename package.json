@@ -1,0 +1,16 @@
+{
+    "name": "legaledge",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "deploy": "wrangler deploy"
+    },
+    "dependencies": {
+        "hono": "^4.0.0",
+        "bcryptjs": "^2.4.3"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "@types/bcryptjs": "^2.4.6"
+    }
+}
