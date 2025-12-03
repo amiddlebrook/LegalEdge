@@ -27,7 +27,7 @@ max_batch_timeout = 30
 # KV Namespace Binding
 [[kv_namespaces]]
 binding = "KV"
-id = "d180bb05bc594084b6066365436e97c8"
+id = "3d23c156c574450dbe4a9cbadf4ec86e"
 
 # R2 Bucket Binding
 [[r2_buckets]]
