@@ -1,0 +1,19 @@
+name = "legaledge-backend"
+main = "src/index.ts"
+compatibility_date = "2024-10-26"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "legaledge-db"
+database_id = "66db443c-4064-49dc-81c7-843ed2fb6fef"
+
+
+
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "legaledge-assets"
+
+[observability]
+enabled = true
