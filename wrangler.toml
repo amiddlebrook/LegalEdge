@@ -1,4 +1,5 @@
 name = "legaledge"
+main = "src/index.ts"
 compatibility_date = "2024-10-26"
 
 [build]
@@ -6,3 +7,29 @@ command = "npm --prefix frontend ci && npm --prefix frontend run build"
 
 [assets]
 directory = "frontend/dist"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "legaledge-db"
+database_id = "66db443c-4064-49dc-81c7-843ed2fb6fef"
+
+# Queue Binding
+[[queues.producers]]
+binding = "INGESTION_QUEUE"
+queue = "legaledge-queue"
+
+[[queues.consumers]]
+queue = "legaledge-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+
+# KV Namespace Binding
+[[kv_namespaces]]
+binding = "KV"
+id = "d180bb05bc594084b6066365436e97c8"
+
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "legaledge-assets"
