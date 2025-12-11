@@ -8,6 +8,8 @@
 
 **LegalEdge** is an AI-powered legislative intelligence platform that helps investors understand how legislation affects their portfolios and identify market opportunities driven by policy changes.
 
+LIVE: https://legaledge.averymiddlebrook2014.workers.dev/
+
 ## 🎯 What is LegalEdge?
 
 LegalEdge bridges the gap between legislative actions and investment decisions by providing:
