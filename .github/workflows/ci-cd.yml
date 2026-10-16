@@ -40,12 +40,6 @@ jobs:
             echo "::error::Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID in repository Actions secrets."
             exit 1
           fi
-      - name: Detach retired Queue consumer (preserve queue and its messages)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          npx --yes wrangler@4 queues consumer worker remove legaledge-queue legaledge
       - name: Deploy LegalEdge to Cloudflare
         id: publish
         uses: cloudflare/wrangler-action@v4
@@ -53,16 +47,47 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-      - name: Verify live deployment
+      - name: Verify live deployment (allow DNS/edge propagation)
         env:
           DEPLOYMENT_URL: ${{ steps.publish.outputs.deployment-url }}
         run: |
+          set -euo pipefail
           if [ -z "$DEPLOYMENT_URL" ]; then
             echo "::error::Wrangler did not return a deployment URL"
             exit 1
           fi
-          echo "Deployment: $DEPLOYMENT_URL"
+          echo "Deployed to: $DEPLOYMENT_URL"
           echo "## LegalEdge production" >> "$GITHUB_STEP_SUMMARY"
           echo "Deployed to: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
-          curl --fail --silent --show-error --retry 4 --retry-delay 4 --max-time 25 "$DEPLOYMENT_URL/api/health" | node -e "let s='';process.stdin.on('data',x=>s+=x);process.stdin.on('end',()=>{const j=JSON.parse(s);if(j.status!=='ok'||j.service!=='LegalEdge')process.exit(1);console.log('Live LegalEdge API healthy:',j.time)})"
-          curl --fail --silent --show-error --retry 4 --retry-delay 4 --max-time 25 "$DEPLOYMENT_URL/" | grep -q 'LegalEdge'
+          ok=0
+          for attempt in $(seq 1 12); do
+            code=$(curl -L -sS --max-time 20 -o /tmp/health.json -w '%{http_code}' "$DEPLOYMENT_URL/api/health" || true)
+            if [ "$code" = "200" ] && node -e "let j=require('/tmp/health.json');if(j.status!=='ok'||j.service!=='LegalEdge')process.exit(1)"; then
+              echo "API smoke test passed on attempt $attempt"
+              ok=1
+              break
+            fi
+            echo "API not yet healthy: attempt $attempt, HTTP $code"
+            head -c 300 /tmp/health.json 2>/dev/null || true
+            echo
+            sleep 5
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::Live API did not become healthy"
+            exit 1
+          fi
+          ok=0
+          for attempt in $(seq 1 10); do
+            code=$(curl -L -sS --max-time 20 -o /tmp/index.html -w '%{http_code}' "$DEPLOYMENT_URL/" || true)
+            if [ "$code" = "200" ] && grep -q 'LegalEdge' /tmp/index.html; then
+              echo "Homepage smoke test passed on attempt $attempt"
+              ok=1
+              break
+            fi
+            echo "Homepage not ready: attempt $attempt, HTTP $code"
+            sleep 5
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::Homepage smoke test failed"
+            exit 1
+          fi
