@@ -21,6 +21,8 @@ jobs:
       - run: node --check src/index.js && node --check web/assets/app.js
       - name: Check required asset paths
         run: test -s web/index.html && test -s web/assets/styles.css
+      - name: Validate Cloudflare deployment package
+        run: npx --yes wrangler@4 deploy --dry-run
 
   deploy:
     name: Cloudflare Workers (free)
