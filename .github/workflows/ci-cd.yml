@@ -25,22 +25,38 @@ jobs:
         run: npx --yes wrangler@4 deploy --dry-run
 
   deploy:
-    name: Cloudflare Workers (free)
+    name: Cloudflare Workers production
     needs: test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - name: Publish to Cloudflare
-        if: env.CF_TOKEN != '' && env.CF_ACCOUNT != ''
+      - name: Verify Cloudflare credentials are set
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_TOKEN" ] || [ -z "$CF_ACCOUNT" ]; then
+            echo "::error::Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID in repository Actions secrets."
+            exit 1
+          fi
+      - name: Deploy LegalEdge to Cloudflare
+        id: publish
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-      - name: Explain missing deployment configuration
-        if: env.CF_TOKEN == '' || env.CF_ACCOUNT == ''
-        run: echo "::warning::Deployment skipped. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to enable automatic deployment."
+      - name: Verify live deployment
+        env:
+          DEPLOYMENT_URL: ${{ steps.publish.outputs.deployment-url }}
+        run: |
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo "::error::Wrangler did not return a deployment URL"
+            exit 1
+          fi
+          echo "Deployment: $DEPLOYMENT_URL"
+          echo "## LegalEdge production" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed to: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+          curl --fail --silent --show-error --retry 4 --retry-delay 4 --max-time 25 "$DEPLOYMENT_URL/api/health" | node -e "let s='';process.stdin.on('data',x=>s+=x);process.stdin.on('end',()=>{const j=JSON.parse(s);if(j.status!=='ok'||j.service!=='LegalEdge')process.exit(1);console.log('Live LegalEdge API healthy:',j.time)})"
+          curl --fail --silent --show-error --retry 4 --retry-delay 4 --max-time 25 "$DEPLOYMENT_URL/" | grep -q 'LegalEdge'
