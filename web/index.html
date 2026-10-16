@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a2b"><meta name="description" content="Primary-source legislative and regulatory intelligence without subscriptions.">
+<title>LegalEdge — Policy Intelligence</title><link rel="stylesheet" href="/assets/styles.css"><script type="module" src="/assets/app.js"></script></head>
+<body><div class="shell">
+<aside class="rail">
+<a href="/" class="brand"><span class="brand-mark">L<span>/</span></span><div>LEGAL<span class="light">EDGE</span><small>POLICY INTELLIGENCE</small></div></a>
+<p class="nav-label">WORKSPACE <span>01</span></p>
+<nav aria-label="Primary navigation">
+<button data-view="overview" class="nav-item selected"><b>◫</b> Overview</button>
+<button data-view="feed" class="nav-item"><b>≡</b> Legislative feed</button>
+<button data-view="regulations" class="nav-item"><b>⚖</b> Regulatory watch</button>
+<button data-view="watchlist" class="nav-item"><b>◎</b> My watchlist <span class="counter" id="watch-count">0</span></button>
+<button data-view="sources" class="nav-item"><b>◇</b> Sources & methodology</button>
+</nav>
+<div class="rail-foot"><span class="dot"></span><div>PUBLIC DATA<small>No keys. No subscription.</small></div></div>
+</aside>
+<main class="main">
+<header class="topbar"><div>INTELLIGENCE <span>/</span> <b id="breadcrumb">OVERVIEW</b></div><div class="top-actions"><span id="connection"><span class="dot"></span> Connecting</span><button id="refresh" aria-label="Refresh feeds" title="Refresh feeds">↻</button></div></header>
+<div class="page">
+<section class="screen" data-panel="overview">
+<div class="eyebrow"><span></span> THE INTELLIGENCE DESK <time id="today"></time></div>
+<div class="hero"><div><small>LEGISLATIVE & REGULATORY MONITORING <i>●</i> U.S. FEDERAL</small><h1>Understand the policy.<br><em>See what matters.</em></h1><p>Discover legislation and rulemaking from primary government sources. Explore policy sectors without opaque or fabricated investment predictions.</p><button class="primary" data-view="feed">Explore legislation <b>↗</b></button></div><div class="hero-art" aria-hidden="true">LE<small>PUBLIC RECORD / PRIVATE RESEARCH</small></div></div>
+<div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Today's intelligence</h2></div><span id="sync-time">Awaiting source response</span></div>
+<div class="metrics">
+<div class="metric"><small>PUBLIC RECORDS <i>01</i></small><strong id="metric-total">—</strong><span>Across available sources</span></div>
+<div class="metric"><small>CONGRESSIONAL BILLS <i>02</i></small><strong id="metric-bills">—</strong><span>Latest GovInfo publications</span></div>
+<div class="metric"><small>REGULATORY DOCUMENTS <i>03</i></small><strong id="metric-regs">—</strong><span>Federal Register records</span></div>
+<div class="metric"><small>SECTOR MATCHES <i>04</i></small><strong id="metric-topics">—</strong><span>Keyword-tagged records</span></div>
+</div>
+<div class="dashboard-grid">
+<div class="panel"><div class="panel-head"><div><p class="eyebrow">PRIMARY SOURCES</p><h3>Latest developments</h3></div><button data-view="feed" class="link-button">View all ↗</button></div><div id="overview-feed"></div></div>
+<div class="panel topics-panel"><div class="panel-head"><div><p class="eyebrow">TOPIC COVERAGE</p><h3>Policy sectors</h3></div><span class="subtle">Keyword matches</span></div><div id="topic-bars"></div><p class="method-note">Coverage shows word matches in documents, not price direction or financial impact.</p></div>
+</div>
+</section>
+<section class="screen hide" data-panel="feed"><p class="eyebrow">CONGRESSIONAL INTELLIGENCE</p><div class="section-heading heading-large"><div><h1>Legislative feed<span>.</span></h1><p>Recent bills from the U.S. Government Publishing Office.</p></div><button class="secondary" id="export">Export CSV ↓</button></div>
+<div class="filters"><input id="bill-search" placeholder="Search bill titles, summaries, topics…" aria-label="Search bills"><select id="bill-sector" aria-label="Sector"><option value="all">All sectors</option></select><span id="bill-count"></span></div><div id="bill-list" class="panel results"></div></section>
+<section class="screen hide" data-panel="regulations"><p class="eyebrow">RULEMAKING WATCH</p><div class="section-heading heading-large"><div><h1>Regulatory watch<span>.</span></h1><p>Final rules, proposed rules, and notices from the Federal Register.</p></div></div>
+<div class="filters"><input id="reg-search" placeholder="Search documents and agencies…" aria-label="Search regulations"><select id="reg-type" aria-label="Regulation type"><option value="all">All types</option><option value="rule">Final rules</option><option value="proposed">Proposed rules</option><option value="notice">Other notices</option></select><span id="reg-count"></span></div><div id="reg-list" class="panel results"></div></section>
+<section class="screen hide" data-panel="watchlist"><p class="eyebrow">PRIVATE WORKSPACE</p><div class="section-heading heading-large"><div><h1>My watchlist<span>.</span></h1><p>Monitor topic overlaps for your holdings. Stored only on this device.</p></div></div>
+<form id="watch-form" class="watch-form"><label>SYMBOL OR LABEL<input id="watch-symbol" maxlength="30" placeholder="e.g. MSFT" required></label><label>RELATED SECTOR<select id="watch-sector" required></select></label><button class="primary">Add entry +</button></form>
+<div id="watch-items" class="watch-grid"></div><div class="panel note"><b>Privacy by design.</b><p>Watchlist entries stay in localStorage in this browser, never on LegalEdge servers. A matched sector is a research lead—not proof of exposure or a recommendation.</p></div>
+</section>
+<section class="screen hide" data-panel="sources"><p class="eyebrow">DATA PROVENANCE</p><div class="section-heading heading-large"><div><h1>Sources & methodology<span>.</span></h1><p>Every item links back to its official publication.</p></div></div><div id="source-cards" class="source-grid"></div>
+<div class="panel note"><h3>What LegalEdge does—and doesn't do</h3><p>LegalEdge retrieves a recent-record window from two official U.S. government sources. Transparent keyword patterns categorize sector topics. No machine-learned return forecasts, trade conflict allegations, probability-of-passage estimates or artificial risk scores are presented.</p><p>The feed is not a complete legislative archive; publisher availability and publish dates vary. Review the original publication before making decisions. This is a research tool, not financial or legal advice.</p></div></section>
+<footer>© 2026 LegalEdge · Evidence-led research <span>Independent research tool · Not legal or investment advice</span></footer>
+</div></main></div></body></html>
